@@ -24,6 +24,7 @@ try:
     )
 except ImportError as e:
     st.error(f"Error al cargar módulos internos: {e}. Asegúrate de que la estructura de carpetas es correcta en GitHub.")
+    st.stop()
 
 # --- CACHE DE SIMULACIÓN ---
 @st.cache_data
@@ -38,7 +39,7 @@ def run_simulation(n, seed, f_rem, t_mu):
 
 # --- SIDEBAR / PARÁMETROS ---
 st.sidebar.header("Configuración SMCHS")
-n_sim = st.sidebar.slider("Número de objetos (N)", 10000, 150000, 30000, step=10000)
+n_sim = st.sidebar.slider("Número de objetos (N)", 10000, 120000, 30000, step=10000)
 f_rem = st.sidebar.slider("Fracción de remanentes (f_rem)", 0.0, 0.08, 0.01, step=0.005)
 t_mu = st.sidebar.slider("Madurez heredada μ (Gyr)", 0.1, 2.5, 0.7, step=0.1)
 z_cut = st.sidebar.slider("Redshift de corte (z_cut)", 8.0, 15.0, 12.0, step=0.5)
@@ -49,7 +50,7 @@ st.markdown(f"**Versión Hipótesis:** {cfg.HIPOTESIS_VERSION} | **Versión Simu
 
 if st.sidebar.button("Ejecutar Simulación"):
     with st.spinner("Simulando poblaciones..."):
-        pop_base, pop_sect = run_simulation(n_sim, seed, f_rem, t_mu)
+        pop_base, pop_sect = run_simulation(int(n_sim), int(seed), float(f_rem), float(t_mu))
         
     # --- MÉTRICAS ---
     st.header("1. Métricas de Cola")
