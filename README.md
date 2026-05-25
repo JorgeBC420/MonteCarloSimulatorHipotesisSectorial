@@ -245,7 +245,20 @@ SNR_tail_Q99 = (Q99_sectorial − Q99_base) / σ_ruido
 **Zona de riesgo:** R >> 3 con f_rem > 5% (hipótesis requiere demasiada inyección).
 
 ---
+Analisis de las primeras imagenes
+En una corrida rápida con N=30000, f
+rem
+	​
 
+=1% y semilla 42, SMCHS v0.5.4 produce un aumento relativo de R=1.466 en la fracción de galaxias masivas detectables a z>12, sin alterar significativamente la distribución global de masa según KS. La señal aparece principalmente en la cola de Δt
+signal
+	​
+
+, con SNR
+tail
+	​
+
+=4.13 respecto al ruido proxy de metalicidad. Estos resultados no validan la hipótesis cosmológica, pero muestran que la señal esperada puede formularse y detectarse dentro de un modelo Monte Carlo controlado.
 ## Referencias
 
 - Aghanim et al. (Planck Collaboration, 2018). *A&A* 641, A6.
