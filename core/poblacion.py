@@ -83,12 +83,13 @@ def _schechter_por_bins(z: np.ndarray[Any, Any], rng: np.random.Generator) -> np
 
     # Validación de seguridad: asegurar que todo objeto tenga masa asignada
     if np.any(np.isnan(log_m_seed)):
-        # Si hay valores en el borde exacto superior (z=17.0), digitize los pone en el bin fuera de rango
+        # Si hay valores en el borde superior o fuera de rango (z >= 17.0)
         nan_mask = np.isnan(log_m_seed)
         n_nan = np.count_nonzero(nan_mask)
         i_last = len(bins) - 2
-        z_mid = 0.5 * (bins[i_last] + bins[i_last + 1])
-        mstar_bin = np.full(n_nan, MSTAR_LOG10_0 - MSTAR_EVO_LAMB * max(z_mid - 8.0, 0.0))
+        # Usar el borde del último bin para la evolución de M*
+        z_ref = bins[i_last + 1] 
+        mstar_bin = np.full(n_nan, MSTAR_LOG10_0 - MSTAR_EVO_LAMB * max(z_ref - 8.0, 0.0))
         log_m_seed[nan_mask] = schechter_sample(n_nan, mstar_bin, SCHECHTER_A, rng)
 
     return log_m_seed

@@ -12,17 +12,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from astropy.table import Table
+import sys
 
-# Configuración de Rutas Universales
-BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = BASE_DIR / "data"
-RAW_DIR = DATA_DIR / "raw"
-PROCESSED_DIR = DATA_DIR / "processed"
+# Asegurar que config sea importable
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import config as cfg
 
-# Asegurar estructura de directorios
-PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger("jades_loader")
 
 def process_jades_dr5(filename="JADES_DR5_z_gt_8_Catalog_Hainline.fits"):
@@ -30,16 +25,18 @@ def process_jades_dr5(filename="JADES_DR5_z_gt_8_Catalog_Hainline.fits"):
     Carga el catálogo FITS de JADES DR5, extrae columnas clave,
     calcula z_best y exporta a un CSV compatible con SMCHS.
     """
-    input_path = RAW_DIR / filename
-    output_path = PROCESSED_DIR / "jades_dr5_smchs_ready.csv"
+    input_path = cfg.RAW_DIR / filename
+    output_path = cfg.PROCESSED_DIR / "jades_dr5_smchs_ready.csv"
     
     # Búsqueda alternativa en data/jades/ si no está en raw/
     if not input_path.exists():
-        input_path = DATA_DIR / "jades" / filename
+        input_path = cfg.DATA_DIR / "jades" / filename
 
     if not input_path.exists():
         logger.error(f"Archivo no encontrado: {input_path}")
         return None
+
+    logger.info(f"Procesando catálogo JADES: {input_path}")
 
     try:
         table = Table.read(input_path)
@@ -69,19 +66,27 @@ def process_jades_dr5(filename="JADES_DR5_z_gt_8_Catalog_Hainline.fits"):
     for final_name, candidates in mapping.items():
         for cand in candidates:
             if cand in df.columns:
-                df_clean[final_name] = df[cand]
+                df_clean[final_name] = df[cand].copy()
                 break
 
-    # 2. Lógica z_best (z_spec tiene prioridad)
-    if 'z_spec' in df_clean.columns and 'z_phot' in df_clean.columns:
-        z_spec_valid = (df_clean['z_spec'] > 0) & (df_clean['z_spec'].notna())
-        df_clean['z_best'] = np.where(
-            z_spec_valid,
-            df_clean['z_spec'],
-            df_clean['z_phot']
-        )
+    # 2. Lógica z_best robusta (z_spec tiene prioridad, pero tolera ausencia)
+    if not df_clean.empty:
+        has_spec = 'z_spec' in df_clean.columns
+        has_phot = 'z_phot' in df_clean.columns
+        
+        if has_spec and has_phot:
+            z_spec_valid = (df_clean['z_spec'] > 0) & (df_clean['z_spec'].notna())
+            df_clean['z_best'] = np.where(z_spec_valid, df_clean['z_spec'], df_clean['z_phot'])
+        elif has_phot:
+            df_clean['z_best'] = df_clean['z_phot']
+        elif has_spec:
+            df_clean['z_best'] = df_clean['z_spec']
+        else:
+            logger.error("No se encontraron columnas de redshift en el mapeo.")
+            return None
     else:
-        logger.warning("Faltan columnas de redshift. Verifique los nombres en el FITS.")
+        logger.error("El DataFrame mapeado está vacío.")
+        return None
 
     # 3. Filtrado (z_best > 8 según requerimiento)
     df_final = df_clean[df_clean['z_best'] > 8.0].copy()
