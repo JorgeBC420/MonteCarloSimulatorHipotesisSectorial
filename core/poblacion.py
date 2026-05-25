@@ -23,17 +23,18 @@ Diseño de catálogo pareado completo:
 """
 
 import hashlib
+import logging
+from typing import Any
 import numpy as np
 import config as cfg
 from config import (
     N, MSTAR_LOG10_0, MSTAR_EVO_LAMB, SCHECHTER_A, SCHECHTER_Z_BINS,
-    Z_INICIAL, ALPHA_Z, SIGMA_Z,
-    BETA_M, SIGMA_M,
-    MUV_SLOPE, MUV_OFFSET,
-    MUV_LIM_BASE, MUV_LIM_SLOPE,
-    F_REM_DEFAULT, T_PREV_MU, T_PREV_SIG,
+    Z_INICIAL, ALPHA_Z, SIGMA_Z, BETA_M, SIGMA_M, MUV_OFFSET, 
+    MUV_SLOPE, MUV_LIM_BASE, MUV_LIM_SLOPE, F_REM_DEFAULT, T_PREV_MU, T_PREV_SIG
 )
 from core.cosmologia import edad_lcdm, samplear_redshift, schechter_sample
+
+logger = logging.getLogger(__name__)
 
 
 def _rng_or_default(rng: np.random.Generator | None = None) -> np.random.Generator:
@@ -57,7 +58,7 @@ def _semilla_estable(f_rem: float, t_mu: float) -> int:
 # FASE A — Catálogo base (compartido y ruidoso)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _schechter_por_bins(z: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+def _schechter_por_bins(z: np.ndarray[Any, Any], rng: np.random.Generator) -> np.ndarray[Any, Any]:
     """
     Muestrea log10(M★) con Schechter aplicado por bins de redshift.
 
@@ -65,23 +66,35 @@ def _schechter_por_bins(z: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     Cada bin usa su propio M* característico, haciendo que galaxias a z=14
     tengan distribuciones de masa más restrictivas que las de z=5.
     """
-    log_m_seed = np.empty(len(z))
+    log_m_seed = np.full(len(z), np.nan)
     bins = SCHECHTER_Z_BINS
+    
+    # Optimización i7: Clasificación en bins en una sola pasada (O(N) en lugar de O(N*bins))
+    bin_indices = np.digitize(z, bins) - 1
+    
+    # Iterar solo sobre bins que contienen datos
+    for i in np.unique(bin_indices):
+        if 0 <= i < len(bins) - 1:
+            mask = (bin_indices == i)
+            n_bin = np.count_nonzero(mask)
+            z_mid = 0.5 * (bins[i] + bins[i + 1])
+            mstar_bin = np.full(n_bin, MSTAR_LOG10_0 - MSTAR_EVO_LAMB * max(z_mid - 8.0, 0.0))
+            log_m_seed[mask] = schechter_sample(n_bin, mstar_bin, SCHECHTER_A, rng)
 
-    for i in range(len(bins) - 1):
-        mask = (z >= bins[i]) & (z < bins[i + 1])
-        n_bin = int(mask.sum())
-        if n_bin == 0:
-            continue
-        # M* característico del centro del bin
-        z_mid = 0.5 * (bins[i] + bins[i + 1])
-        mstar_bin = np.full(n_bin, MSTAR_LOG10_0 - MSTAR_EVO_LAMB * max(z_mid - 8.0, 0.0))
-        log_m_seed[mask] = schechter_sample(n_bin, mstar_bin, SCHECHTER_A, rng)
+    # Validación de seguridad: asegurar que todo objeto tenga masa asignada
+    if np.any(np.isnan(log_m_seed)):
+        # Si hay valores en el borde exacto superior (z=17.0), digitize los pone en el bin fuera de rango
+        nan_mask = np.isnan(log_m_seed)
+        n_nan = np.count_nonzero(nan_mask)
+        i_last = len(bins) - 2
+        z_mid = 0.5 * (bins[i_last] + bins[i_last + 1])
+        mstar_bin = np.full(n_nan, MSTAR_LOG10_0 - MSTAR_EVO_LAMB * max(z_mid - 8.0, 0.0))
+        log_m_seed[nan_mask] = schechter_sample(n_nan, mstar_bin, SCHECHTER_A, rng)
 
     return log_m_seed
 
 
-def inicializar_catalogo(n: int = N, rng: np.random.Generator = None) -> dict:
+def inicializar_catalogo(n: int | None = None, rng: np.random.Generator | None = None) -> dict[str, Any]:
     """
     Fase A: genera el catálogo base compartido.
 
@@ -93,6 +106,8 @@ def inicializar_catalogo(n: int = N, rng: np.random.Generator = None) -> dict:
     Retorna dict con:
         z, t_lcdm, log_m_seed, mstar_z_char, eps_Z, eps_M, n
     """
+    if n is None:
+        n = N
     rng = _rng_or_default(rng)
 
     z          = samplear_redshift(n, rng)
@@ -121,11 +136,11 @@ def inicializar_catalogo(n: int = N, rng: np.random.Generator = None) -> dict:
 # FASE B — Inyección estocástica
 # ─────────────────────────────────────────────────────────────────────────────
 
-def inyectar_madurez(catalogo: dict,
+def inyectar_madurez(catalogo: dict[str, Any],
                      f_rem: float = F_REM_DEFAULT,
                      t_mu:  float = T_PREV_MU,
                      t_sig: float = T_PREV_SIG,
-                     rng: np.random.Generator = None) -> tuple:
+                     rng: np.random.Generator | None = None) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """
     Fase B: desplazamiento temporal Δt_heredada para fracción f_rem de objetos.
 
@@ -152,8 +167,8 @@ def inyectar_madurez(catalogo: dict,
 # FASE C — Observables proxy con ruido pareado
 # ─────────────────────────────────────────────────────────────────────────────
 
-def calcular_observables(catalogo: dict,
-                         t_eff: np.ndarray) -> dict:
+def calcular_observables(catalogo: dict[str, Any],
+                         t_eff: np.ndarray[Any, Any]) -> dict[str, Any]:
     """
     Fase C: t_eff → observables con separación señal/ruido (v0.5.3).
 
@@ -200,7 +215,7 @@ def calcular_observables(catalogo: dict,
     M_UV = MUV_OFFSET + MUV_SLOPE * (log_m - 9.0)
 
     # ── Δt_i: señal, observado, ruido ────────────────────────────────────────
-    def _t_chem(Z):
+    def _t_chem(Z: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         return np.expm1(np.maximum((Z - Z_INICIAL) / ALPHA_Z, 0.0))
 
     t_chem_true = _t_chem(Z_true)
@@ -234,8 +249,8 @@ def calcular_observables(catalogo: dict,
 # FASE D — Filtro proxy de detectabilidad
 # ─────────────────────────────────────────────────────────────────────────────
 
-def aplicar_filtro_detectabilidad_proxy(M_UV: np.ndarray,
-                                        z: np.ndarray) -> np.ndarray:
+def aplicar_filtro_detectabilidad_proxy(M_UV: np.ndarray[Any, Any],
+                                        z: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """
     Fase D: proxy simplificado de detectabilidad por magnitud UV.
 
@@ -259,11 +274,11 @@ aplicar_filtro_jwst = aplicar_filtro_detectabilidad_proxy
 # INTEGRADOR — construir_poblacion()
 # ─────────────────────────────────────────────────────────────────────────────
 
-def construir_poblacion(catalogo: dict,
+def construir_poblacion(catalogo: dict[str, Any],
                         f_rem: float = F_REM_DEFAULT,
                         t_mu:  float = T_PREV_MU,
                         t_sig: float = T_PREV_SIG,
-                        rng: np.random.Generator = None) -> dict:
+                        rng: np.random.Generator | None = None) -> dict[str, Any]:
     """
     Pipeline completo B→D sobre un catálogo base dado.
 
