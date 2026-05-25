@@ -21,6 +21,10 @@ SIMULADOR_NOMBRE_EN = "MCSSH"          # Monte Carlo Simulator for the Sectorial
 PROJECT_ROOT = Path(__file__).resolve().parent
 OUT_DIR = str(PROJECT_ROOT / "outputs")
 LOG_DIR = str(PROJECT_ROOT / "logs")
+DATA_DIR = PROJECT_ROOT / "data"
+RAW_DIR = DATA_DIR / "raw"
+PROCESSED_DIR = DATA_DIR / "processed"
+RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Reproducibilidad ─────────────────────────────────────────────────────────
 SEED = 42
