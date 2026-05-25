@@ -1,8 +1,8 @@
 """
 analysis/estadistica.py — Fase E: análisis estadístico
-SMCHS v0.5.2 / Hipótesis Sectorial v3.1
+SMCHS v0.5.3 / Hipótesis Sectorial v3.1
 
-CHANGELOG v0.5.2:
+CHANGELOG v0.5.3:
     Nuevas métricas de señal/ruido en metricas_completas():
         median_dt_signal    mediana de dt_signal a z > z_cut
         median_dt_observed  mediana de dt_observed a z > z_cut
@@ -16,21 +16,25 @@ v0.3.0: Δt_i correcto.
 Funciones exportadas:
     p_cola, n_visible_z, n_masivas_z
     ks_test, kl_divergencia, correlacion_zm
-    metricas_dt_signal      ← nueva v0.5.2
+    metricas_dt_signal      ← nueva v0.5.3
     metricas_completas
     scan_frems, heatmap_grid
     resumen_consola
 """
 
+import logging
 import numpy as np
 from scipy import stats
 from scipy.special import rel_entr
+import config as cfg
 from config import (
-    Z_CUT, LOG_M_THRESH,
+    Z_CUT, LOG_M_THRESH, DT_TAIL_TAU, KL_N_BINS,
     FREMS_SCAN, HEATMAP_FREMS, HEATMAP_TPREVS, N_HEATMAP,
-    SEED, T_PREV_MU,
+    T_PREV_MU,
 )
 from core.poblacion import inicializar_catalogo, construir_poblacion
+
+logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,7 +73,7 @@ def ks_test(pop_a: dict, pop_b: dict, z_cut: float = Z_CUT) -> tuple:
 
 
 def kl_divergencia(pop_a: dict, pop_b: dict,
-                   z_cut: float = Z_CUT, n_bins: int = 40) -> float:
+                   z_cut: float = Z_CUT, n_bins: int = KL_N_BINS) -> float:
     xa = pop_a["log_m"][_mask_alto(pop_a, z_cut)]
     xb = pop_b["log_m"][_mask_alto(pop_b, z_cut)]
     if len(xa) < 5 or len(xb) < 5:
@@ -90,7 +94,7 @@ def correlacion_zm(pop: dict, z_cut: float = Z_CUT) -> tuple:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Métricas de señal/ruido — reescritas en v0.5.2
+# Métricas de señal/ruido — reescritas en v0.5.3
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Nota de diseño: dt_signal = t_chem_true − t_ΛCDM = t_eff − t_ΛCDM = Δt_heredada.
@@ -98,7 +102,7 @@ def correlacion_zm(pop: dict, z_cut: float = Z_CUT) -> tuple:
 # de la madurez inyectada sobrevive en la cola observable tras el ruido eps_Z.
 # Ver README para la distinción dt_signal / dt_observed / dt_noise.
 
-_TAU_DEFAULT = 0.5   # Gyr — umbral de "madurez significativa" para P(Δt > τ)
+_TAU_DEFAULT = DT_TAIL_TAU   # Gyr — umbral de "madurez significativa" para P(Δt > τ)
 
 
 def metricas_cola_dt(pop_base: dict, pop_sect: dict,
@@ -197,7 +201,7 @@ def metricas_dt_signal(pop_base: dict, pop_sect: dict,
         "std_pooled":            std_pooled,
         "snr_dt":                (med_s - med_b) / (std_pooled + 1e-12),
         "delta_median_signal":   med_s - med_b,
-        # campos de cola (principales v0.5.2)
+        # campos de cola (principales v0.5.3)
         **cola,
     }
 
@@ -220,7 +224,7 @@ def metricas_completas(pop_base: dict, pop_sect: dict,
     n_anom    = int(anom_mask.sum())
     n_rem_a   = int(pop_sect["es_rem"][anom_mask].sum()) if n_anom > 0 else 0
 
-    # Métricas de señal/ruido (v0.5.2)
+    # Métricas de señal/ruido (v0.5.3)
     snr_m = metricas_dt_signal(pop_base, pop_sect, z_cut)
 
     # Medianas de dt_observed para el CSV
@@ -255,7 +259,7 @@ def metricas_completas(pop_base: dict, pop_sect: dict,
         "n_anom":                 n_anom,
         "n_rem_anom":             n_rem_a,
         "pct_rem_anom":           n_rem_a / (n_anom + 1e-9) * 100,
-        # señal / ruido v0.5.2 — métricas de COLA (estimador correcto)
+        # señal / ruido v0.5.3 — métricas de COLA (estimador correcto)
         "q95_dt_signal_sect":     snr_m["q95_dt_signal_sect"],
         "q99_dt_signal_sect":     snr_m["q99_dt_signal_sect"],
         "p_tail_base":            snr_m["p_tail_base"],
@@ -294,11 +298,10 @@ def scan_frems(catalogo: dict,
     resultados = []
 
     for fr in frems:
-        print(f"    scan f_rem={fr*100:.2f}%...", end="\r", flush=True)
+        logger.info("scan f_rem=%.2f%%", fr * 100)
         pop = construir_poblacion(catalogo, f_rem=fr, t_mu=t_mu)
         resultados.append(metricas_completas(pop_base, pop, z_cut))
 
-    print()
     return resultados
 
 
@@ -324,7 +327,8 @@ def heatmap_grid(z_cut: float = Z_CUT,
 
     for i, tp in enumerate(tprevs):
         # Catálogo fresco por fila; control ΛCDM construido sobre el mismo
-        cat_row      = inicializar_catalogo(n)
+        rng_row      = np.random.default_rng(cfg.SEED + 10_000 + i)
+        cat_row      = inicializar_catalogo(n, rng_row)
         pop_base_row = construir_poblacion(cat_row, f_rem=0.0, t_mu=tp)
         p0_row       = p_cola(pop_base_row, z_cut)
 
@@ -332,9 +336,8 @@ def heatmap_grid(z_cut: float = Z_CUT,
             pop         = construir_poblacion(cat_row, f_rem=fr, t_mu=tp)
             grid[i, j]  = p_cola(pop, z_cut) / (p0_row + 1e-12)
             cnt += 1
-            print(f"    heatmap {cnt}/{total}", end="\r", flush=True)
+            logger.info("heatmap %s/%s", cnt, total)
 
-    print()
     return frems, tprevs, grid          # ya es ratio (dividido por p0_row)
 
 
@@ -344,42 +347,45 @@ def heatmap_grid(z_cut: float = Z_CUT,
 
 def resumen_consola(pop_base: dict, pop_sect: dict,
                     z_cut: float = Z_CUT) -> None:
-    m   = metricas_completas(pop_base, pop_sect, z_cut)
+    """Imprime resumen en consola mediante logging estructurado."""
+    m = metricas_completas(pop_base, pop_sect, z_cut)
     sep = "─" * 58
-
-    print(f"\n{sep}")
-    print(f"  Análisis  |  f_rem={m['f_rem']*100:.2f}%  |  t_mu={m['t_prev_mu']:.2f} Gyr  |  z>{z_cut:.0f}")
-    print(sep)
-    print(f"  P(anomalía) ΛCDM base      : {m['p_base']:.5f}")
-    print(f"  P(anomalía) sectorial      : {m['p_sect']:.5f}")
-    print(f"  Ratio R                    : {m['ratio_R']:.3f}×")
-    print(f"  Exceso relativo            : {m['exceso_pct']:+.1f}%")
-    print(sep)
-    print(f"  KS statistic D             : {m['ks_D']:.5f}")
-    s = "★ sig." if m["ks_sig"] else "(no sig.)"
-    print(f"  KS p-value                 : {m['ks_p']:.4e}  {s}")
-    print(f"  KL divergencia             : {m['kl_div']:.5f}")
-    print(sep)
-    print(f"  Pearson r (base)           : {m['pearson_base']:.4f}")
-    print(f"  Pearson r (sectorial)      : {m['pearson_sect']:.4f}")
-    print(sep)
-    print(f"  N detectables z>{z_cut:.0f} (base): {m['N_visible_z_base']:,}")
-    print(f"  N detectables z>{z_cut:.0f} (sect): {m['N_visible_z_sect']:,}")
-    print(f"  N masivas    z>{z_cut:.0f} (base): {m['N_massive_z_base']:,}")
-    print(f"  N masivas    z>{z_cut:.0f} (sect): {m['N_massive_z_sect']:,}")
-    print(sep)
-    print(f"  Anómalas (sectorial)       : {m['n_anom']:,}")
-    print(f"  Anómalas que son rem.      : {m['n_rem_anom']:,}  ({m['pct_rem_anom']:.1f}%)")
-    print(sep)
-    print(f"  ── Señal / Cola (v0.5.2) ───────────────────────────────")
-    print(f"  Q99 dt_signal base         : {m['q99_dt_signal_sect'] - m['delta_q99']:+.4f} Gyr")
-    print(f"  Q99 dt_signal sect         : {m['q99_dt_signal_sect']:+.4f} Gyr")
-    print(f"  ΔQ99 (sect − base)         : {m['delta_q99']:+.4f} Gyr")
-    print(f"  P(Δt_signal > 0.5 Gyr) base: {m['p_tail_base']:.5f}")
-    print(f"  P(Δt_signal > 0.5 Gyr) sect: {m['p_tail_sect']:.5f}")
-    print(f"  ΔP_tail (sect − base)      : {m['delta_p_tail']:+.5f}")
-    print(f"  tail_ratio (auxiliar)      : {m['tail_ratio']:.3f}×  [inestable si base≈0]")
     snr_t = m["snr_tail_q99"]
     label = "★ robusto" if snr_t > 2 else ("marginal" if snr_t > 1 else "< σ_ruido")
-    print(f"  SNR_tail (Q99/σ_ruido)     : {snr_t:+.3f}  [{label}]")
-    print(sep)
+    lines = [
+        sep,
+        f"Análisis | f_rem={m['f_rem']*100:.2f}% | t_mu={m['t_prev_mu']:.2f} Gyr | z>{z_cut:.0f}",
+        sep,
+        f"P(anomalía) ΛCDM base      : {m['p_base']:.5f}",
+        f"P(anomalía) sectorial      : {m['p_sect']:.5f}",
+        f"Ratio R                    : {m['ratio_R']:.3f}×",
+        f"Exceso relativo            : {m['exceso_pct']:+.1f}%",
+        sep,
+        f"KS statistic D             : {m['ks_D']:.5f}",
+        f"KS p-value                 : {m['ks_p']:.4e} {'★ sig.' if m['ks_sig'] else '(no sig.)'}",
+        f"KL divergencia             : {m['kl_div']:.5f}",
+        sep,
+        f"Pearson r (base)           : {m['pearson_base']:.4f}",
+        f"Pearson r (sectorial)      : {m['pearson_sect']:.4f}",
+        sep,
+        f"N detectables z>{z_cut:.0f} (base): {m['N_visible_z_base']:,}",
+        f"N detectables z>{z_cut:.0f} (sect): {m['N_visible_z_sect']:,}",
+        f"N masivas    z>{z_cut:.0f} (base): {m['N_massive_z_base']:,}",
+        f"N masivas    z>{z_cut:.0f} (sect): {m['N_massive_z_sect']:,}",
+        sep,
+        f"Anómalas (sectorial)       : {m['n_anom']:,}",
+        f"Anómalas que son rem.      : {m['n_rem_anom']:,} ({m['pct_rem_anom']:.1f}%)",
+        sep,
+        "── Señal / Cola (v0.5.3) ───────────────────────────────",
+        f"Q99 dt_signal base         : {m['q99_dt_signal_sect'] - m['delta_q99']:+.4f} Gyr",
+        f"Q99 dt_signal sect         : {m['q99_dt_signal_sect']:+.4f} Gyr",
+        f"ΔQ99 (sect − base)         : {m['delta_q99']:+.4f} Gyr",
+        f"P(Δt_signal > 0.5 Gyr) base: {m['p_tail_base']:.5f}",
+        f"P(Δt_signal > 0.5 Gyr) sect: {m['p_tail_sect']:.5f}",
+        f"ΔP_tail (sect − base)      : {m['delta_p_tail']:+.5f}",
+        f"tail_ratio (auxiliar)      : {m['tail_ratio']:.3f}× [inestable si base≈0]",
+        f"SNR_tail (Q99/σ_ruido)     : {snr_t:+.3f} [{label}]",
+        sep,
+    ]
+    for line in lines:
+        logger.info(line)

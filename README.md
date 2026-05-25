@@ -3,7 +3,7 @@
 
 **Autor:** Jorge Eduardo Bravo Chaves  
 **Hipótesis base:** Transición Sectorial Cosmológica v3.1  
-**Versión del simulador:** 0.5.2  
+**Versión del simulador:** 0.5.3  
 **Cosmología:** Planck18 (astropy)
 
 ---
@@ -31,7 +31,7 @@ El análisis mide si el modelo sectorial produce exceso estadístico de galaxias
 | Componente | Versión |
 |---|---|
 | Hipótesis de Transición Sectorial Cosmológica | v3.1 |
-| Simulador Monte Carlo (SMCHS / MCSSH) | v0.5.2 |
+| Simulador Monte Carlo (SMCHS / MCSSH) | v0.5.3 |
 
 El simulador implementa la hipótesis v3.1, pero su versión es independiente. Actualizaciones al simulador no implican cambios en la hipótesis y viceversa.
 
@@ -63,11 +63,24 @@ smchs/
 pip install -r requirements.txt
 ```
 
-Versiones mínimas: Python 3.10+, astropy 5.3+, numpy 1.24+, scipy 1.10+, matplotlib 3.7+.
+Versiones acotadas: Python 3.10+, numpy >=1.24,<2.0; scipy >=1.10,<1.12; matplotlib >=3.7,<3.9; astropy >=5.3,<6.1. Ver `requirements.txt`.
 
 ---
 
 ## Uso
+
+### Verificación rápida
+
+```bash
+# Verificación de sintaxis de todos los módulos
+python scripts/verify.py
+
+# Tests mínimos
+python -m pytest tests/
+```
+
+El script `scripts/verify.py` compila todos los archivos `.py` del proyecto. Los tests que requieren `astropy` se omiten automáticamente si la dependencia no está instalada.
+
 
 ### Corrida completa
 ```bash
@@ -128,9 +141,9 @@ python main.py --no-heatmap
 ### CSV
 | Archivo | Contenido |
 |---------|-----------|
-| `metricas_por_frem.csv` | Tabla de métricas por valor de f_rem |
+| `metricas_por_f_rem.csv` | Tabla de métricas por valor de f_rem |
 | `poblacion_muestra.csv` | Muestra de objetos individuales (base + sectorial) |
-| `heatmap_ratio.csv` | Grilla completa de ratio R(f_rem, t_previo) |
+| `heatmap_sensitivity_ratio.csv` | Grilla completa de ratio R(f_rem, t_previo) |
 
 ---
 
@@ -158,7 +171,7 @@ En v0.2.0 Δtᵢ era error numérico (escala 10⁻¹⁶): se invertía `Z(t_eff)
 
 **v0.4.0:** `ε_Z` se almacena en el catálogo base, así el ruido es idéntico entre modelos. El Δtᵢ observado refleja solo el efecto de `f_rem`, no fluctuaciones de ruido.
 
-**v0.5.2:** Métricas de mediana reemplazadas por métricas de **cola** (`Q95`, `Q99`, `P(Δt>τ)`, `SNR_tail_Q99`), que son el estimador correcto para señales raras con f_rem pequeño. La mediana de toda la población es cero cuando f_rem < 50%; las métricas de cola detectan el engrosamiento en el extremo donde la hipótesis predice señal. Fig 10 ahora muestra la cola positiva filtrada; Fig 11 reemplaza el SNR de mediana por los tres paneles de cola.
+**v0.5.3:** Métricas de mediana reemplazadas por métricas de **cola** (`Q95`, `Q99`, `P(Δt>τ)`, `SNR_tail_Q99`), que son el estimador correcto para señales raras con f_rem pequeño. La mediana de toda la población es cero cuando f_rem < 50%; las métricas de cola detectan el engrosamiento en el extremo donde la hipótesis predice señal. Fig 10 ahora muestra la cola positiva filtrada; Fig 11 reemplaza el SNR de mediana por los tres paneles de cola.
 
 **Nota sobre dt_signal:** En esta implementación, `dt_signal = t_eff − t_ΛCDM = Δt_heredada` operativamente. Esto no es circularidad; es un test experimental deliberado: medir cuánta de la madurez inyectada sobrevive como señal detectable en la cola observable, después de que el ruido `eps_Z` contamina `dt_observed`. La diferencia `dt_signal − dt_observed = −dt_noise` cuantifica ese sesgo observacional.
 
@@ -170,11 +183,24 @@ La definición correcta (Predicción P2, hipótesis v3.1):
 
 ---
 
+
+## Logging y tolerancia a fallos
+
+`main.py` usa logging estructurado y escribe `smchs_run.log` dentro del directorio de salida. Si una figura falla, la corrida intenta continuar y conservar los outputs parciales. Use `--fail-fast` para detener la ejecución ante el primer error.
+
 ## Reproducibilidad
 
 Las semillas se derivan con `hashlib.sha256`, no con `hash()` de Python (que es inestable entre sesiones por `PYTHONHASHSEED`). El mismo `--seed` y los mismos parámetros producen siempre los mismos resultados.
 
 ---
+
+
+## Unidades importantes de configuración
+
+- `SIGMA_Z`: ruido en metalicidad lineal, expresado como fracción solar `Z/Z☉`.
+- `SIGMA_M`: ruido en masa estelar, expresado en dex sobre `log10(M★/M☉)`.
+- `KL_N_BINS`: número de bins usados para la divergencia KL en la distribución de `log10(M★)`.
+- `OUT_DIR`: por defecto apunta a `outputs/` dentro de la carpeta del proyecto, no al directorio desde donde se invoque Python.
 
 ## Filtro proxy de detectabilidad
 

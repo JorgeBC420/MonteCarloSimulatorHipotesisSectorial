@@ -9,20 +9,26 @@ Fig 5: Δt_i — desacople edades t_chem vs t_ΛCDM (Predicción P2)
 Fig 6: Curva de sensibilidad P(anomalía) y KS-stat vs f_rem
 Fig 7: Heatmap 2D sensibilidad (f_rem × t_previo)
 Fig 8: Objetos observacionales JWST/ALMA en espacio de parámetros
+Fig 9: Señal vs observado (dt_signal vs dt_observed)
+Fig 10: Distribución completa y cola positiva de dt_signal
+Fig 11: ΔP_tail, SNR_tail_Q99 y Q99(dt_signal) vs f_rem
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import logging
 from config import (
     Z_CUT, Z_MIN, Z_MAX, LOG_M_THRESH, PALETTE, OBS_OBJECTS,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _save(fig: plt.Figure, path: str) -> None:
     fig.savefig(path, dpi=130, bbox_inches="tight")
     plt.close(fig)
-    print(f"  ✓ {path.split('/')[-1]}")
+    logger.info("Figura guardada: %s", path.split("/")[-1])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -309,13 +315,13 @@ def fig8_objetos_jwst(pop_base: dict, pop_sect: dict,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FIGURAS NUEVAS v0.5.2 — Separación señal / ruido
+# FIGURAS NUEVAS v0.5.3 — Separación señal / ruido
 # ─────────────────────────────────────────────────────────────────────────────
 
 def fig9_signal_vs_observed(pop_base: dict, pop_sect: dict,
                              out: str) -> None:
     """
-    Fig 9 (v0.5.2): scatter dt_signal vs dt_observed a z > Z_CUT.
+    Fig 9 (v0.5.3): scatter dt_signal vs dt_observed a z > Z_CUT.
 
     Si hay señal real, los puntos se alinean sobre la diagonal y=x.
     Si el exceso es solo ruido, la nube es caótica sin correlación.
@@ -373,7 +379,7 @@ def fig9_signal_vs_observed(pop_base: dict, pop_sect: dict,
 def fig10_distribucion_dt_signal(pop_base: dict, pops_sect: list,
                                   frems: list, out: str) -> None:
     """
-    Fig 10 (v0.5.2): distribución de dt_signal — SOLO cola positiva.
+    Fig 10 (v0.5.3): distribución de dt_signal — SOLO cola positiva.
 
     Filtra dt_signal > 0 para mostrar únicamente objetos con madurez
     heredada real. Evita el pico dominante en cero (objetos no-remanentes)
@@ -425,7 +431,7 @@ def fig10_distribucion_dt_signal(pop_base: dict, pops_sect: list,
 
 def fig11_snr_scan(scan_results: list, out: str) -> None:
     """
-    Fig 11 (v0.5.2): métricas de COLA vs f_rem.
+    Fig 11 (v0.5.3): métricas de COLA vs f_rem.
 
     Panel 1: ΔP_tail = P(Δt>τ)_sect − P(Δt>τ)_base
              Métrica estable incluso cuando P_base≈0.
@@ -444,7 +450,7 @@ def fig11_snr_scan(scan_results: list, out: str) -> None:
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     fig.suptitle(
-        "Métricas de cola Δt_signal vs f_rem  (v0.5.2)\n"
+        "Métricas de cola Δt_signal vs f_rem  (v0.5.3)\n"
         "Estimador correcto para señales raras: no mediana, sino cola estadística",
         fontsize=10, fontweight="bold"
     )

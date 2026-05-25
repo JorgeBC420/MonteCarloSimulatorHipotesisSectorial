@@ -1,8 +1,8 @@
 """
 analysis/exportar.py — Exportación de resultados a CSV
-SMCHS v0.5.2 / Hipótesis Sectorial v3.1
+SMCHS v0.5.3 / Hipótesis Sectorial v3.1
 
-Columnas principales de cola en v0.5.2:
+Columnas principales de cola en v0.5.3:
     q95_dt_signal_sect, q99_dt_signal_sect, p_tail_base, p_tail_sect,
     delta_p_tail, snr_tail_q99, delta_q99
 Columnas legacy informativas:
@@ -11,8 +11,11 @@ Columnas legacy informativas:
 
 import csv
 import os
+import logging
 import numpy as np
 from config import Z_CUT, LOG_M_THRESH
+
+logger = logging.getLogger(__name__)
 
 
 # Columnas exportadas — orden canónico para reproducibilidad
@@ -25,7 +28,7 @@ CAMPOS_SCAN = [
     "N_visible_z_base", "N_visible_z_sect",
     "N_massive_z_base", "N_massive_z_sect",
     "n_anom", "n_rem_anom", "pct_rem_anom",
-    # v0.5.2 — métricas de COLA (estimador correcto para señales raras)
+    # v0.5.3 — métricas de COLA (estimador correcto para señales raras)
     "q95_dt_signal_sect", "q99_dt_signal_sect",
     "p_tail_base", "p_tail_sect", "delta_p_tail", "tail_ratio", "snr_tail_q99", "delta_q99",
     # legacy (mediana — informativo)
@@ -36,10 +39,10 @@ CAMPOS_SCAN = [
 
 def exportar_metricas_scan(scan_results: list, out_dir: str) -> None:
     """
-    Escribe metricas_por_frem.csv.
+    Escribe metricas_por_f_rem.csv.
     Una fila por valor de f_rem con todas las métricas de metricas_completas().
     """
-    path = os.path.join(out_dir, "metricas_por_frem.csv")
+    path = os.path.join(out_dir, "metricas_por_f_rem.csv")
 
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=CAMPOS_SCAN, extrasaction="ignore")
@@ -56,7 +59,7 @@ def exportar_metricas_scan(scan_results: list, out_dir: str) -> None:
                     fila[k] = round(float(fila[k]), 6)
             w.writerow({k: fila.get(k, "") for k in CAMPOS_SCAN})
 
-    print(f"  ✓ {os.path.basename(path)}")
+    logger.info("CSV guardado: %s", os.path.basename(path))
 
 
 def exportar_muestra_poblacion(pop_base: dict, pop_sect: dict,
@@ -65,7 +68,7 @@ def exportar_muestra_poblacion(pop_base: dict, pop_sect: dict,
     """
     Escribe poblacion_muestra.csv con muestra aleatoria de ambas poblaciones.
 
-    Columnas v0.5.2: incluye dt_signal, dt_observed, dt_noise, Z_true.
+    Columnas v0.5.3: incluye dt_signal, dt_observed, dt_noise, Z_true.
     """
     path   = os.path.join(out_dir, "poblacion_muestra.csv")
     campos = [
@@ -110,15 +113,15 @@ def exportar_muestra_poblacion(pop_base: dict, pop_sect: dict,
         for row in filas(pop_sect, "sectorial"):
             w.writerow(row)
 
-    print(f"  ✓ {os.path.basename(path)}")
+    logger.info("CSV guardado: %s", os.path.basename(path))
 
 
 def exportar_heatmap(frems: np.ndarray, tprevs: np.ndarray,
                      ratio_grid: np.ndarray, out_dir: str) -> None:
     """
-    Escribe heatmap_ratio.csv con columnas: t_previo_gyr, f_rem_pct, ratio_R.
+    Escribe heatmap_sensitivity_ratio.csv con columnas: t_previo_gyr, f_rem_pct, ratio_R.
     """
-    path = os.path.join(out_dir, "heatmap_ratio.csv")
+    path = os.path.join(out_dir, "heatmap_sensitivity_ratio.csv")
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["t_previo_gyr", "f_rem_pct", "ratio_R"])
@@ -129,4 +132,4 @@ def exportar_heatmap(frems: np.ndarray, tprevs: np.ndarray,
                     round(float(fr) * 100, 3),
                     round(float(ratio_grid[i, j]), 4),
                 ])
-    print(f"  ✓ {os.path.basename(path)}")
+    logger.info("CSV guardado: %s", os.path.basename(path))

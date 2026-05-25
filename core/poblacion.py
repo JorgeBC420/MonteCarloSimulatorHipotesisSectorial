@@ -1,8 +1,8 @@
 """
 core/poblacion.py — Pipeline de 5 fases
-SMCHS v0.5.2 / Hipótesis Sectorial v3.1
+SMCHS v0.5.3 / Hipótesis Sectorial v3.1
 
-CHANGELOG v0.5.2:
+CHANGELOG v0.5.3:
     Separación explícita señal / observado / ruido en Fase C:
         dt_signal   = t_chem_true − t_ΛCDM   [componente física pura]
         dt_observed = t_chem_obs  − t_ΛCDM   [componente medible con ruido]
@@ -24,9 +24,9 @@ Diseño de catálogo pareado completo:
 
 import hashlib
 import numpy as np
+import config as cfg
 from config import (
-    N, SEED, Z_MIN, Z_MAX,
-    MSTAR_LOG10_0, MSTAR_EVO_LAMB, SCHECHTER_A, SCHECHTER_Z_BINS,
+    N, MSTAR_LOG10_0, MSTAR_EVO_LAMB, SCHECHTER_A, SCHECHTER_Z_BINS,
     Z_INICIAL, ALPHA_Z, SIGMA_Z,
     BETA_M, SIGMA_M,
     MUV_SLOPE, MUV_OFFSET,
@@ -35,7 +35,9 @@ from config import (
 )
 from core.cosmologia import edad_lcdm, samplear_redshift, schechter_sample
 
-_RNG = np.random.default_rng(SEED)
+
+def _rng_or_default(rng: np.random.Generator | None = None) -> np.random.Generator:
+    return rng if rng is not None else np.random.default_rng(cfg.SEED)
 
 
 def _semilla_estable(f_rem: float, t_mu: float) -> int:
@@ -48,7 +50,7 @@ def _semilla_estable(f_rem: float, t_mu: float) -> int:
     """
     key = f"{f_rem:.6f}_{t_mu:.4f}".encode()
     digest = hashlib.sha256(key).hexdigest()[:8]
-    return SEED + int(digest, 16) % (2**31)
+    return cfg.SEED + int(digest, 16) % (2**31)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -91,7 +93,7 @@ def inicializar_catalogo(n: int = N, rng: np.random.Generator = None) -> dict:
     Retorna dict con:
         z, t_lcdm, log_m_seed, mstar_z_char, eps_Z, eps_M, n
     """
-    rng = rng or _RNG
+    rng = _rng_or_default(rng)
 
     z          = samplear_redshift(n, rng)
     t_lcdm     = edad_lcdm(z)
@@ -132,7 +134,7 @@ def inyectar_madurez(catalogo: dict,
 
     Retorna (t_eff, es_rem, delta_t).
     """
-    rng    = rng or _RNG
+    rng    = _rng_or_default(rng)
     n      = catalogo["n"]
     t_lcdm = catalogo["t_lcdm"]
 
@@ -153,7 +155,7 @@ def inyectar_madurez(catalogo: dict,
 def calcular_observables(catalogo: dict,
                          t_eff: np.ndarray) -> dict:
     """
-    Fase C: t_eff → observables con separación señal/ruido (v0.5.2).
+    Fase C: t_eff → observables con separación señal/ruido (v0.5.3).
 
     Usa eps_Z y eps_M del catálogo base (compartidos entre modelos).
     Separa explícitamente la componente física de la observacional:
@@ -179,7 +181,7 @@ def calcular_observables(catalogo: dict,
 
     dt_signal > 0 con f_rem > 0 → la hipótesis produce madurez real.
     Si dt_signal ≈ 0 pero dt_observed > 0, el exceso es solo ruido.
-    SNR = median(dt_signal) / std(dt_noise) cuantifica detectabilidad.
+    La detectabilidad se estima con métricas de cola (Q99/SNR_tail), no con la mediana.
     """
     t_lcdm  = catalogo["t_lcdm"]
     log_m_s = catalogo["log_m_seed"]
