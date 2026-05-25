@@ -315,13 +315,13 @@ def fig8_objetos_jwst(pop_base: dict, pop_sect: dict,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FIGURAS NUEVAS v0.5.3 — Separación señal / ruido
+# FIGURAS NUEVAS v0.5.4 — Separación señal / ruido
 # ─────────────────────────────────────────────────────────────────────────────
 
 def fig9_signal_vs_observed(pop_base: dict, pop_sect: dict,
                              out: str) -> None:
     """
-    Fig 9 (v0.5.3): scatter dt_signal vs dt_observed a z > Z_CUT.
+    Fig 9 (v0.5.4): scatter dt_signal vs dt_observed a z > Z_CUT.
 
     Si hay señal real, los puntos se alinean sobre la diagonal y=x.
     Si el exceso es solo ruido, la nube es caótica sin correlación.
@@ -379,7 +379,7 @@ def fig9_signal_vs_observed(pop_base: dict, pop_sect: dict,
 def fig10_distribucion_dt_signal(pop_base: dict, pops_sect: list,
                                   frems: list, out: str) -> None:
     """
-    Fig 10 (v0.5.3): distribución de dt_signal — SOLO cola positiva.
+    Fig 10 (v0.5.4): distribución de dt_signal — SOLO cola positiva.
 
     Filtra dt_signal > 0 para mostrar únicamente objetos con madurez
     heredada real. Evita el pico dominante en cero (objetos no-remanentes)
@@ -431,7 +431,7 @@ def fig10_distribucion_dt_signal(pop_base: dict, pops_sect: list,
 
 def fig11_snr_scan(scan_results: list, out: str) -> None:
     """
-    Fig 11 (v0.5.3): métricas de COLA vs f_rem.
+    Fig 11 (v0.5.4): métricas de COLA vs f_rem.
 
     Panel 1: ΔP_tail = P(Δt>τ)_sect − P(Δt>τ)_base
              Métrica estable incluso cuando P_base≈0.
@@ -450,22 +450,20 @@ def fig11_snr_scan(scan_results: list, out: str) -> None:
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     fig.suptitle(
-        "Métricas de cola Δt_signal vs f_rem  (v0.5.3)\n"
+        "Métricas de cola Δt_signal vs f_rem  (v0.5.4)\n"
         "Estimador correcto para señales raras: no mediana, sino cola estadística",
         fontsize=10, fontweight="bold"
     )
 
-    # Panel 1: tail_ratio
+    # Panel 1: ΔP_tail (estable incluso cuando P_base≈0)
     ax = axes[0]
-    ax.plot(frems_pct, tail_ratios, "o-", color=PALETTE["sect"], lw=2, ms=7)
-    ax.axhline(1.0, color="gray",  ls=":", lw=1,   label="ratio=1 (sin efecto)")
-    ax.axhline(1.5, color="orange",ls="--",lw=1.2, label="ratio=1.5")
-    ax.axhline(2.0, color="red",   ls="--",lw=1.2, label="ratio=2")
-    ax.fill_between(frems_pct, 1.0, tail_ratios,
-                    where=[r > 1 for r in tail_ratios],
+    ax.plot(frems_pct, delta_p, "o-", color=PALETTE["sect"], lw=2, ms=7)
+    ax.axhline(0.0, color="gray", ls=":", lw=1.0, label="sin efecto")
+    ax.fill_between(frems_pct, 0.0, delta_p,
+                    where=[d > 0 for d in delta_p],
                     alpha=0.15, color=PALETTE["sect"])
-    ax.set(xlabel="f_rem (%)", ylabel="tail_ratio")
-    ax.set_title("P(Δt>τ) sectorial / P(Δt>τ) base\n(τ = 0.5 Gyr)", fontsize=9)
+    ax.set(xlabel="f_rem (%)", ylabel="ΔP_tail")
+    ax.set_title("ΔP_tail = P(Δt>τ)_sect − P(Δt>τ)_base\n(τ = 0.5 Gyr)", fontsize=9)
     ax.legend(fontsize=8)
 
     # Panel 2: SNR_tail

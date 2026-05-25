@@ -1,0 +1,229 @@
+
+<h2 class="sr-only">Análisis completo del run SMCHS v0.5.3, N=120,000, seed=42, f_rem=1%</h2>
+
+<style>
+.wrap { padding: 1rem 0; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.kpi { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.875rem 1rem; }
+.kpi-label { font-size: 11px; color: var(--color-text-tertiary); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+.kpi-val { font-size: 22px; font-weight: 500; color: var(--color-text-primary); line-height: 1.1; }
+.kpi-sub { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; }
+.kpi-ok { color: #0F6E56; }
+.kpi-warn { color: #BA7517; }
+.section { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-tertiary); border-top: 0.5px solid var(--color-border-tertiary); padding-top: 1rem; margin: 1.5rem 0 0.75rem; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+.chart-box { }
+.chart-title { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 6px; font-size: 11px; color: var(--color-text-secondary); }
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: 1px; }
+.flag-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.flag { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; background: var(--color-background-primary); }
+.flag-head { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 4px; }
+.flag-body { font-size: 13px; color: var(--color-text-primary); }
+.flag.ok { border-left: 3px solid #0F6E56; border-radius: 0; }
+.flag.warn { border-left: 3px solid #BA7517; border-radius: 0; }
+.flag.info { border-left: 3px solid #185FA5; border-radius: 0; }
+</style>
+
+<div class="wrap">
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Ratio R</div>
+    <div class="kpi-val">1.258<span style="font-size:14px;color:var(--color-text-tertiary)">×</span></div>
+    <div class="kpi-sub">+25.8% galaxias masivas</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">SNR tail Q99</div>
+    <div class="kpi-val kpi-ok">3.05<span style="font-size:14px">σ</span></div>
+    <div class="kpi-sub">★ robusto</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">ΔQ99 señal</div>
+    <div class="kpi-val">+1.196<span style="font-size:13px;color:var(--color-text-tertiary)"> Gyr</span></div>
+    <div class="kpi-sub">desplazamiento cola extrema</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">ΔP_tail</div>
+    <div class="kpi-val">+3.20<span style="font-size:14px;color:var(--color-text-tertiary)">%</span></div>
+    <div class="kpi-sub">P(Δt>0.5 Gyr): 0→3.20%</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">KS p-value</div>
+    <div class="kpi-val">1.0</div>
+    <div class="kpi-sub">dist. global sin cambio ✓</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Detectables z>12</div>
+    <div class="kpi-val">563</div>
+    <div class="kpi-sub">vs 551 base (+12)</div>
+  </div>
+</div>
+
+<div class="section">Scan de sensibilidad — ratio R vs f_rem</div>
+<div class="chart-box" style="margin-bottom:1.5rem;">
+  <div class="legend">
+    <span><span class="leg-dot" style="background:#1D9E75"></span>Ratio R</span>
+    <span><span class="leg-dot" style="background:#378ADD"></span>SNR tail Q99</span>
+    <span><span class="leg-dot" style="background:#E24B4A; border: 1px dashed #E24B4A; background:transparent;"></span>umbral R=1.5 / SNR=2</span>
+  </div>
+  <div style="position:relative;width:100%;height:220px;">
+    <canvas id="scanChart" role="img" aria-label="Gráfico de ratio R y SNR_tail_Q99 versus f_rem para 8 valores de fracción de remanentes"></canvas>
+  </div>
+</div>
+
+<div class="chart-row">
+  <div class="chart-box">
+    <div class="chart-title">ΔP_tail y Q99(Δt_signal) vs f_rem</div>
+    <div class="legend">
+      <span><span class="leg-dot" style="background:#BA7517"></span>ΔP_tail</span>
+      <span><span class="leg-dot" style="background:#534AB7"></span>Q99 sect</span>
+    </div>
+    <div style="position:relative;width:100%;height:200px;">
+      <canvas id="tailChart" role="img" aria-label="ΔP_tail y Q99 de dt_signal sectorial vs f_rem"></canvas>
+    </div>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">Pearson r (correlación Z–M★) vs f_rem</div>
+    <div class="legend">
+      <span><span class="leg-dot" style="background:#888780"></span>base</span>
+      <span><span class="leg-dot" style="background:#1D9E75"></span>sectorial</span>
+    </div>
+    <div style="position:relative;width:100%;height:200px;">
+      <canvas id="pearsonChart" role="img" aria-label="Correlación Pearson entre metalicidad y masa vs f_rem para modelos base y sectorial"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="section">Observaciones y banderas</div>
+<div class="flag-row">
+  <div class="flag ok">
+    <div class="flag-head">SNR robusto con N=120k</div>
+    <div class="flag-body">3.05σ — estable respecto al run --quick (4.13σ con N=30k, seed=42). El descenso es esperado: más objetos base llena mejor la distribución y reduce el exceso relativo de cola.</div>
+  </div>
+  <div class="flag ok">
+    <div class="flag-head">KS p=1.0 es el resultado correcto</div>
+    <div class="flag-body">La distribución global de masa no cambia entre modelos. El efecto sectorial es localizado en la cola z>12 de objetos masivos — exactamente lo que predice la hipótesis.</div>
+  </div>
+  <div class="flag warn">
+    <div class="flag-head">tail_ratio = 3.2×10¹⁰ — inestable</div>
+    <div class="flag-body">P_base(Δt>0.5 Gyr) ≈ 0 hace que tail_ratio sea numéricamente inestable. Esto ya está documentado. La métrica correcta es SNR_tail_Q99 = 3.05σ, no el ratio.</div>
+  </div>
+  <div class="flag info">
+    <div class="flag-head">Pearson r: 0.019 → 0.068 con f=1%</div>
+    <div class="flag-body">La correlación Z–M★ a z>12 sube 3.6× en el modelo sectorial. A f_rem=3% llega a r=0.154. Esto es una firma secundaria potencialmente observable con JWST/ALMA.</div>
+  </div>
+  <div class="flag info">
+    <div class="flag-head">22% de objetos anómalos son remanentes</div>
+    <div class="flag-body">9 galaxias masivas detectadas a z>12 en el modelo sectorial; 2 son remanentes directos (f_rem=1%). A f_rem=8% ese porcentaje sube a 70%. Consistente con la predicción P1.</div>
+  </div>
+  <div class="flag ok">
+    <div class="flag-head">Corrida limpia — 0 errores, 6.7s</div>
+    <div class="flag-body">11 figuras + heatmap 10×10 (100 celdas) + 3 CSVs. Los bugs del audit v0.5.2 (NameError fig11, labels ×50) están confirmados resueltos en v0.5.3.</div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const frems = [0, 0.3, 0.5, 1.0, 2.0, 3.0, 5.0, 8.0];
+const ratios = [1.0, 1.133, 1.135, 1.258, 1.355, 1.729, 2.227, 2.475];
+const snrs   = [0.0, 1.647, 1.877, 3.051, 3.653, 4.017, 4.305, 4.247];
+const dps    = [0.0, 0.01079, 0.01261, 0.03197, 0.05852, 0.09122, 0.10815, 0.18553];
+const q99s   = [0.0, 0.635, 0.721, 1.196, 1.447, 1.691, 1.827, 1.824];
+const pr_b   = [0.0188,0.0188,0.0188,0.0188,0.0188,0.0188,0.0188,0.0188];
+const pr_s   = [0.0188, 0.0323, 0.0610, 0.0676, 0.0809, 0.1540, 0.2247, 0.1758];
+const labels = frems.map(f => f.toFixed(1) + '%');
+
+const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+const gridCol = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+const textCol = isDark ? '#9ca3af' : '#6b7280';
+
+const baseOpts = (yLabel) => ({
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { color: textCol, font: { size: 11 } }, grid: { color: gridCol }, border: { color: gridCol } },
+    y: { ticks: { color: textCol, font: { size: 11 } }, grid: { color: gridCol }, border: { color: gridCol },
+         title: { display: true, text: yLabel, color: textCol, font: { size: 11 } } }
+  }
+});
+
+new Chart(document.getElementById('scanChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'Ratio R', data: ratios, borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.08)',
+        tension: 0.35, pointRadius: 4, pointBackgroundColor: '#1D9E75', fill: true,
+        borderDash: [], yAxisID: 'y' },
+      { label: 'SNR Q99', data: snrs, borderColor: '#378ADD', backgroundColor: 'transparent',
+        tension: 0.35, pointRadius: 4, pointBackgroundColor: '#378ADD',
+        borderDash: [4,3], yAxisID: 'y2' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      annotation: {} },
+    scales: {
+      x: { ticks: { color: textCol, font: { size: 11 } }, grid: { color: gridCol }, border: { color: gridCol } },
+      y: { ticks: { color: textCol, font: { size: 11 } }, grid: { color: gridCol }, border: { color: gridCol },
+           title: { display: true, text: 'Ratio R', color: '#1D9E75', font: { size: 11 } },
+           min: 0.8 },
+      y2: { position: 'right', ticks: { color: textCol, font: { size: 11 } },
+            grid: { display: false }, border: { color: gridCol },
+            title: { display: true, text: 'SNR (σ)', color: '#378ADD', font: { size: 11 } },
+            min: 0 }
+    }
+  }
+});
+
+new Chart(document.getElementById('tailChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'ΔP_tail', data: dps.map(v => +(v*100).toFixed(3)), borderColor: '#BA7517',
+        tension: 0.35, pointRadius: 4, fill: false, yAxisID: 'y' },
+      { label: 'Q99 sect', data: q99s, borderColor: '#534AB7',
+        tension: 0.35, pointRadius: 4, fill: false, borderDash: [4,3], yAxisID: 'y2' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: textCol, font: { size: 11 } }, grid: { color: gridCol }, border: { color: gridCol } },
+      y: { ticks: { color: textCol, font: { size: 11 }, callback: v => v.toFixed(1)+'%' },
+           grid: { color: gridCol }, border: { color: gridCol },
+           title: { display: true, text: 'ΔP_tail (%)', color: '#BA7517', font: { size: 11 } } },
+      y2: { position: 'right', ticks: { color: textCol, font: { size: 11 }, callback: v => v.toFixed(2)+' Gyr' },
+            grid: { display: false }, border: { color: gridCol },
+            title: { display: true, text: 'Q99 (Gyr)', color: '#534AB7', font: { size: 11 } } }
+    }
+  }
+});
+
+new Chart(document.getElementById('pearsonChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'base', data: pr_b, borderColor: '#888780', borderDash: [4,3],
+        tension: 0.1, pointRadius: 4, fill: false },
+      { label: 'sectorial', data: pr_s, borderColor: '#1D9E75',
+        tension: 0.35, pointRadius: 4, fill: false },
+    ]
+  },
+  options: { ...baseOpts('Pearson r (Z–M★)'),
+    scales: {
+      x: { ticks: { color: textCol, font: { size: 11 } }, grid: { color: gridCol }, border: { color: gridCol } },
+      y: { min: 0, ticks: { color: textCol, font: { size: 11 }, callback: v => v.toFixed(3) },
+           grid: { color: gridCol }, border: { color: gridCol },
+           title: { display: true, text: 'r', color: textCol, font: { size: 11 } } }
+    }
+  }
+});
+</script>
