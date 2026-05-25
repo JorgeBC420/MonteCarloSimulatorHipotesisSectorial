@@ -33,6 +33,7 @@ from config import (
     MUV_SLOPE, MUV_LIM_BASE, MUV_LIM_SLOPE, F_REM_DEFAULT, T_PREV_MU, T_PREV_SIG
 )
 from core.cosmologia import edad_lcdm, samplear_redshift, schechter_sample
+from core.metric_dilution import f_rem_eff_z
 
 logger = logging.getLogger(__name__)
 
@@ -141,12 +142,24 @@ def inyectar_madurez(catalogo: dict[str, Any],
                      f_rem: float = F_REM_DEFAULT,
                      t_mu:  float = T_PREV_MU,
                      t_sig: float = T_PREV_SIG,
-                     rng: np.random.Generator | None = None) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
+                     rng: np.random.Generator | None = None,
+                     metric_dilution: bool = False,
+                     w_rem: float = 0.0,
+                     z_ref: float = 12.0,
+                     f_max: float = 0.08) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """
     Fase B: desplazamiento temporal Δt_heredada para fracción f_rem de objetos.
 
         t_eff = t_ΛCDM + Δt_heredada
         Δt_heredada ~ LogNormal(log(t_mu), t_sig)  [solo remanentes]
+
+    Si metric_dilution=True, f_rem deja de ser probabilidad plana y se evalúa
+    objeto por objeto con:
+
+        f_rem_eff(z)=min[f_max, f_rem*((1+z)/(1+z_ref))**(3(1+w_rem))]
+
+    Esto implementa la dilución métrica opcional de la HTSC sin alterar el
+    comportamiento histórico por defecto.
 
     Retorna (t_eff, es_rem, delta_t).
     """
@@ -154,7 +167,11 @@ def inyectar_madurez(catalogo: dict[str, Any],
     n      = catalogo["n"]
     t_lcdm = catalogo["t_lcdm"]
 
-    es_rem  = rng.random(n) < f_rem
+    if metric_dilution:
+        p_rem = f_rem_eff_z(catalogo["z"], f_rem, z_ref=z_ref, w_rem=w_rem, f_max=f_max)
+        es_rem = rng.random(n) < p_rem
+    else:
+        es_rem = rng.random(n) < f_rem
     delta_t = np.zeros(n)
     n_rem   = int(es_rem.sum())
 
@@ -279,7 +296,11 @@ def construir_poblacion(catalogo: dict[str, Any],
                         f_rem: float = F_REM_DEFAULT,
                         t_mu:  float = T_PREV_MU,
                         t_sig: float = T_PREV_SIG,
-                        rng: np.random.Generator | None = None) -> dict[str, Any]:
+                        rng: np.random.Generator | None = None,
+                        metric_dilution: bool = False,
+                        w_rem: float = 0.0,
+                        z_ref: float = 12.0,
+                        f_max: float = 0.08) -> dict[str, Any]:
     """
     Pipeline completo B→D sobre un catálogo base dado.
 
@@ -300,7 +321,7 @@ def construir_poblacion(catalogo: dict[str, Any],
     if rng is None:
         rng = np.random.default_rng(_semilla_estable(f_rem, t_mu))
 
-    t_eff, es_rem, delta_t = inyectar_madurez(catalogo, f_rem, t_mu, t_sig, rng)
+    t_eff, es_rem, delta_t = inyectar_madurez(catalogo, f_rem, t_mu, t_sig, rng, metric_dilution=metric_dilution, w_rem=w_rem, z_ref=z_ref, f_max=f_max)
     obs     = calcular_observables(catalogo, t_eff)
     visible = aplicar_filtro_detectabilidad_proxy(obs["M_UV"], catalogo["z"])
 
@@ -320,5 +341,9 @@ def construir_poblacion(catalogo: dict[str, Any],
         # metadata
         "f_rem":      f_rem,
         "t_mu":       t_mu,
+        "metric_dilution": metric_dilution,
+        "w_rem":      w_rem,
+        "z_ref":      z_ref,
+        "f_max":      f_max,
         "n":          catalogo["n"],
     }

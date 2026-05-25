@@ -40,6 +40,9 @@ from figures.graficas import (
     fig7_heatmap, fig8_objetos_jwst,
     fig9_signal_vs_observed, fig10_distribucion_dt_signal, fig11_snr_scan,
 )
+from figures.observed_overlay import fig_observed_overlay
+from baselines.external_loader import load_external_catalog
+from baselines.metrics import visible_smchs_df, compare_tail_to_baseline, tail_summary
 
 logger = logging.getLogger("smchs")
 
@@ -67,6 +70,16 @@ def parse_args() -> argparse.Namespace:
                    help="Directorio de salida")
     p.add_argument("--fail-fast", action="store_true",
                    help="Detener ejecución al primer fallo en figura/exportación")
+    p.add_argument("--metric-dilution", action="store_true",
+                   help="Activar f_rem_eff(z) con dilución métrica opcional")
+    p.add_argument("--w-rem", type=float, default=0.0,
+                   help="w efectivo para f_rem_eff(z); 0=materia, 1/3=radiación, -1=constante")
+    p.add_argument("--z-ref", type=float, default=12.0,
+                   help="redshift de referencia para f_rem_eff(z)")
+    p.add_argument("--fmax", type=float, default=0.08,
+                   help="límite superior de f_rem_eff(z)")
+    p.add_argument("--external-baseline", type=str, default=None,
+                   help="CSV/FITS externo JADES/TNG/SIMBA para superposición y D_tail")
     return p.parse_args()
 
 
@@ -90,6 +103,8 @@ def banner(args: argparse.Namespace) -> None:
     logger.info("SMCHS / MCSSH v%s — Hipótesis v%s", cfg.SIMULADOR_VERSION, cfg.HIPOTESIS_VERSION)
     logger.info("N=%s | f_rem=%.4f | tprev=%.3f Gyr | z_cut=%.2f | seed=%s | out=%s",
                 f"{args.n:,}", args.frem, args.tprev, args.zcut, args.seed, args.out)
+    if args.metric_dilution:
+        logger.info("Dilución métrica activa: w_rem=%.3f | z_ref=%.2f | fmax=%.3f", args.w_rem, args.z_ref, args.fmax)
 
 
 def safe_step(label: str, func: Callable, *args, fail_fast: bool = False, **kwargs):
@@ -129,9 +144,9 @@ def main() -> int:
 
         logger.info("[2/6] Construyendo poblaciones pareadas")
         pop_lcdm  = construir_poblacion(catalogo, f_rem=0.0,         t_mu=args.tprev)
-        pop_sect  = construir_poblacion(catalogo, f_rem=args.frem,   t_mu=args.tprev)
-        pop_half  = construir_poblacion(catalogo, f_rem=args.frem/2, t_mu=args.tprev)
-        pop_doble = construir_poblacion(catalogo, f_rem=args.frem*2, t_mu=args.tprev)
+        pop_sect  = construir_poblacion(catalogo, f_rem=args.frem,   t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
+        pop_half  = construir_poblacion(catalogo, f_rem=args.frem/2, t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
+        pop_doble = construir_poblacion(catalogo, f_rem=args.frem*2, t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
 
         n_vis = int(pop_lcdm["visible"].sum())
         n_alt = int((pop_lcdm["visible"] & (pop_lcdm["z"] > args.zcut)).sum())
@@ -141,7 +156,7 @@ def main() -> int:
         resumen_consola(pop_lcdm, pop_sect, z_cut=args.zcut)
 
         logger.info("[4/6] Escaneando sensibilidad en f_rem")
-        resultados_scan = scan_frems(catalogo, t_mu=args.tprev, z_cut=args.zcut)
+        resultados_scan = scan_frems(catalogo, t_mu=args.tprev, z_cut=args.zcut, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
 
         logger.info("[5/6] Generando figuras")
         pops_multi   = [pop_lcdm, pop_half, pop_sect, pop_doble]
@@ -175,10 +190,31 @@ def main() -> int:
             logger.info("Heatmap omitido")
 
         frems_snr = [0.005, args.frem, args.frem * 2]
-        pops_snr = [construir_poblacion(catalogo, f_rem=fr, t_mu=args.tprev) for fr in frems_snr]
+        pops_snr = [construir_poblacion(catalogo, f_rem=fr, t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax) for fr in frems_snr]
         safe_step("fig9_signal_vs_observed", fig9_signal_vs_observed, pop_lcdm, pop_sect, args.out, fail_fast=args.fail_fast)
         safe_step("fig10_distribucion_dt_signal", fig10_distribucion_dt_signal, pop_lcdm, pops_snr, frems_snr, args.out, fail_fast=args.fail_fast)
         safe_step("fig11_snr_scan", fig11_snr_scan, resultados_scan, args.out, fail_fast=args.fail_fast)
+
+        if args.external_baseline:
+            logger.info("Cargando baseline externo: %s", args.external_baseline)
+            try:
+                ext_df = load_external_catalog(args.external_baseline)
+                safe_step("fig12_observed_overlay", fig_observed_overlay, pop_lcdm, pop_sect, ext_df, args.out, fail_fast=args.fail_fast)
+                import pandas as pd
+                base_df = visible_smchs_df(pop_lcdm, "SMCHS_LCDM_proxy")
+                sect_df = visible_smchs_df(pop_sect, "SMCHS_sectorial")
+                rows = []
+                rows.append({"model": "external", **tail_summary(ext_df, z_cut=args.zcut, mass_cut=cfg.LOG_M_THRESH)})
+                rows.append({"model": "SMCHS_LCDM_proxy", **tail_summary(base_df, z_cut=args.zcut, mass_cut=cfg.LOG_M_THRESH)})
+                rows.append({"model": "SMCHS_sectorial", **tail_summary(sect_df, z_cut=args.zcut, mass_cut=cfg.LOG_M_THRESH)})
+                rows.append({"model": "D_tail_external_vs_LCDM", **compare_tail_to_baseline(ext_df, base_df, z_cut=args.zcut, mass_cut=cfg.LOG_M_THRESH)})
+                rows.append({"model": "D_tail_sectorial_vs_LCDM", **compare_tail_to_baseline(sect_df, base_df, z_cut=args.zcut, mass_cut=cfg.LOG_M_THRESH)})
+                pd.DataFrame(rows).to_csv(Path(args.out) / "external_baseline_tail_metrics.csv", index=False)
+                logger.info("CSV guardado: external_baseline_tail_metrics.csv")
+            except Exception:
+                logger.exception("FALLÓ baseline externo")
+                if args.fail_fast:
+                    raise
 
         logger.info("[6/6] Exportando CSV")
         safe_step("exportar_metricas_scan", exportar_metricas_scan, resultados_scan, args.out, fail_fast=args.fail_fast)

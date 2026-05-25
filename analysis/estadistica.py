@@ -284,7 +284,11 @@ def metricas_completas(pop_base: dict, pop_sect: dict,
 def scan_frems(catalogo: dict,
                frems: list = None,
                t_mu: float = None,
-               z_cut: float = Z_CUT) -> list:
+               z_cut: float = Z_CUT,
+               metric_dilution: bool = False,
+               w_rem: float = 0.0,
+               z_ref: float = 12.0,
+               f_max: float = 0.08) -> list:
     """
     Escanea métricas para múltiples f_rem sobre el MISMO catálogo base.
 
@@ -299,7 +303,7 @@ def scan_frems(catalogo: dict,
 
     for fr in frems:
         logger.info("scan f_rem=%.2f%%", fr * 100)
-        pop = construir_poblacion(catalogo, f_rem=fr, t_mu=t_mu)
+        pop = construir_poblacion(catalogo, f_rem=fr, t_mu=t_mu, metric_dilution=metric_dilution, w_rem=w_rem, z_ref=z_ref, f_max=f_max)
         resultados.append(metricas_completas(pop_base, pop, z_cut))
 
     return resultados

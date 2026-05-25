@@ -264,3 +264,33 @@ tail
 - Aghanim et al. (Planck Collaboration, 2018). *A&A* 641, A6.
 - ALMA Observatory (2025). Oxygen in most distant known galaxy.
 - Bravo Chaves, J. E. (2026). *Hipótesis de Transición Sectorial Cosmológica v3.1*. Investigación independiente, San José, Costa Rica.
+
+
+## v0.5.5 — Baselines externos y dilución métrica opcional
+
+Este patch agrega módulos no destructivos para comparar SMCHS con catálogos externos sin correr simulaciones hidrodinámicas completas:
+
+- `baselines/external_loader.py`: carga CSV/FITS/parquet y normaliza columnas para JADES/TNG/SIMBA.
+- `baselines/metrics.py`: calcula `P_massive`, `D_tail`, percentiles y resúmenes de cola.
+- `data_loader/jades_loader.py`: convierte JADES DR5 FITS/CSV a `data/processed/jades_dr5_smchs_ready.csv`.
+- `figures/observed_overlay.py`: genera `fig12_observed_overlay.png` si se usa `--external-baseline`.
+- `core/metric_dilution.py`: implementa `f_rem_eff(z)` como extensión opcional.
+
+Ejemplos:
+
+```bash
+python -m data_loader.jades_loader --input data/raw/JADES_DR5_z_gt_8_Catalog_Hainline.fits
+python main.py --seed 42 --n 200000 --external-baseline data/processed/jades_dr5_smchs_ready.csv
+python main.py --seed 42 --n 200000 --metric-dilution --w-rem 0 --z-ref 12 --fmax 0.08
+```
+
+La comparación externa produce:
+
+```text
+outputs/fig12_observed_overlay.png
+outputs/external_baseline_tail_metrics.csv
+```
+
+La dilución métrica está desactivada por defecto; el comportamiento histórico del simulador no cambia salvo que se active explícitamente con `--metric-dilution`.
+
+Más detalles: `documentacion/EXTERNAL_BASELINES_OVERLAY_ROADMAP.md`.
