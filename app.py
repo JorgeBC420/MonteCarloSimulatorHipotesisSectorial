@@ -14,13 +14,16 @@ st.set_page_config(page_title="SMCHS Dashboard", layout="wide", page_icon="📊"
 sys.path.insert(0, os.path.dirname(__file__))
 
 import config as cfg
-from core.poblacion import inicializar_catalogo, construir_poblacion
-from analysis.estadistica import resumen_consola
-from figures.graficas import (
-    fig1_distribucion_masa, fig2_exceso_por_z, fig3_ks_colas,
-    fig4_correlacion_zm, fig5_delta_t, fig8_objetos_jwst,
-    fig9_signal_vs_observed, fig10_distribucion_dt_signal
-)
+try:
+    from core.poblacion import inicializar_catalogo, construir_poblacion
+    from analysis.estadistica import resumen_consola
+    from figures.graficas import (
+        fig1_distribucion_masa, fig2_exceso_por_z, fig3_ks_colas,
+        fig4_correlacion_zm, fig5_delta_t, fig8_objetos_jwst,
+        fig9_signal_vs_observed, fig10_distribucion_dt_signal
+    )
+except ImportError as e:
+    st.error(f"Error al cargar módulos internos: {e}. Asegúrate de que la estructura de carpetas es correcta en GitHub.")
 
 # --- CACHE DE SIMULACIÓN ---
 @st.cache_data
