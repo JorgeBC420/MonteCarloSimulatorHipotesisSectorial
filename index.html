@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTSC v3.2.1 · SMCHS Toy Model</title>
+  <meta name="description" content="Bilingual landing page for the Hypothesis of Sectorial Cosmological Transition / Hipótesis de Transición Sectorial Cosmológica." />
+  <meta name="author" content="Jorge Eduardo Bravo Chaves" />
+  <meta name="keywords" content="Big Bang, Lambda-CDM, ΛCDM, redshift, cosmic microwave background, CMB, observable universe, universo observable, cosmología, cosmology, galaxias tempranas, early massive galaxies, JWST, JADES, Hubble tension, Monte Carlo, toy model" />
+  <meta name="robots" content="index, follow" />
+  <meta property="og:title" content="HTSC v3.2.1 · SMCHS Toy Model" />
+  <meta property="og:description" content="A bilingual working hypothesis compatible with the Big Bang, Lambda-CDM, redshift and CMB." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <style>
+:root{--bg:#050712;--bg-2:#0b1022;--panel:rgba(255,255,255,.075);--text:#f4f7fb;--muted:#aeb9cc;--line:rgba(255,255,255,.15);--accent:#88d7ff;--accent-2:#f0b7ff;--accent-3:#b7ffd8;--warning:#ffd38a;--shadow:0 18px 60px rgba(0,0,0,.38);--radius:24px;--max:1120px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 18% 20%,rgba(136,215,255,.22),transparent 28%),radial-gradient(circle at 82% 12%,rgba(240,183,255,.18),transparent 30%),radial-gradient(circle at 70% 78%,rgba(183,255,216,.13),transparent 30%),linear-gradient(135deg,var(--bg),var(--bg-2) 55%,#070714);color:var(--text);overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(255,255,255,.75) 0 1px,transparent 1.7px),radial-gradient(circle,rgba(136,215,255,.55) 0 1px,transparent 1.5px),radial-gradient(circle,rgba(240,183,255,.45) 0 1px,transparent 1.5px);background-size:91px 91px,137px 137px,211px 211px;background-position:0 0,32px 44px,80px 120px;opacity:.28;mask-image:linear-gradient(to bottom,black 0%,black 55%,transparent 100%)}
+a{color:inherit}
+.container{width:min(var(--max),calc(100% - 40px));margin:0 auto}
+
+/* ── LANGUAGE VISIBILITY ── */
+body.lang-en .es-only { display: none !important; }
+body.lang-es .en-only { display: none !important; }
+
+/* ── NAV ── */
+.nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(18px);background:rgba(5,7,18,.62);border-bottom:1px solid var(--line)}
+.nav-inner{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:780;letter-spacing:-.03em}
+.brand-mark{width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,transparent 16%),radial-gradient(circle at 68% 60%,var(--accent-2),transparent 23%),radial-gradient(circle at 45% 58%,var(--accent),transparent 36%),linear-gradient(135deg,#17224d,#101020);box-shadow:0 0 30px rgba(136,215,255,.32)}
+.nav-right{display:flex;align-items:center;gap:20px}
+.nav-links{display:flex;gap:16px;align-items:center;color:var(--muted);font-size:.94rem}
+.nav-links a{text-decoration:none}
+.nav-links a:hover{color:var(--text)}
+
+/* ── LANG TOGGLE ── */
+.lang-toggle{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:rgba(255,255,255,.04);flex-shrink:0}
+.lang-btn{padding:7px 15px;font-size:.82rem;font-weight:700;letter-spacing:.08em;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:color .18s,background .18s}
+.lang-btn:hover{color:var(--text)}
+.lang-btn.active{background:rgba(136,215,255,.18);color:var(--accent)}
+.lang-btn.active-es{background:rgba(255,211,138,.14);color:var(--warning)}
+
+/* ── HERO ── */
+.hero{position:relative;padding:92px 0 58px}
+.hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:34px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);background:rgba(255,255,255,.07);border-radius:999px;color:var(--muted);font-size:.9rem}
+.badge-dot{width:8px;height:8px;border-radius:50%;background:var(--accent-3);box-shadow:0 0 16px var(--accent-3)}
+h1{margin:22px 0 18px;max-width:860px;font-size:clamp(2.55rem,6.6vw,5.5rem);line-height:.96;letter-spacing:-.075em}
+.gradient-text{background:linear-gradient(95deg,#fff,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{max-width:760px;color:#d5dceb;font-size:clamp(1.02rem,2vw,1.2rem);line-height:1.72}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 18px;border-radius:999px;text-decoration:none;font-weight:720;border:1px solid var(--line);background:rgba(255,255,255,.075);color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.btn.primary{background:linear-gradient(135deg,rgba(136,215,255,.95),rgba(240,183,255,.88));color:#07101e;border:none}
+.cosmic-card{position:relative;min-height:440px;border-radius:34px;background:radial-gradient(circle at 45% 42%,rgba(255,255,255,.22),transparent 1.5%),radial-gradient(circle at 38% 46%,rgba(136,215,255,.75),transparent 6%),radial-gradient(circle at 62% 58%,rgba(240,183,255,.55),transparent 10%),radial-gradient(circle at 50% 50%,rgba(255,255,255,.08),transparent 22%),conic-gradient(from 210deg,rgba(136,215,255,.18),rgba(240,183,255,.18),rgba(183,255,216,.12),rgba(136,215,255,.18));border:1px solid var(--line);box-shadow:var(--shadow),inset 0 0 70px rgba(255,255,255,.06);overflow:hidden}
+.cosmic-card:before,.cosmic-card:after{content:"";position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.18);inset:10%;transform:rotate(-18deg) scaleX(1.42)}
+.cosmic-card:after{inset:23%;opacity:.62;transform:rotate(21deg) scaleX(1.58)}
+.equation{position:absolute;left:24px;right:24px;bottom:24px;padding:22px;border-radius:24px;background:rgba(5,7,18,.72);backdrop-filter:blur(16px);border:1px solid var(--line)}
+.equation strong{display:block;font-size:clamp(1.8rem,4vw,3rem);letter-spacing:-.04em;margin-bottom:8px}
+.equation span{color:var(--muted);line-height:1.6}
+
+/* ── SECTIONS ── */
+.section{padding:58px 0}
+.section-header{max-width:880px;margin-bottom:26px}
+.eyebrow{color:var(--accent);text-transform:uppercase;letter-spacing:.14em;font-weight:800;font-size:.78rem}
+h2{margin:10px 0 12px;font-size:clamp(2rem,4.4vw,3.25rem);letter-spacing:-.055em;line-height:1.05}
+.section-header p,.card p,.note p{color:var(--muted);line-height:1.72}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.card,.note,.download-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:0 10px 34px rgba(0,0,0,.18);backdrop-filter:blur(18px)}
+.card{padding:24px}
+.card h3{margin:0 0 8px;font-size:1.2rem;letter-spacing:-.025em}
+.card p{margin:0}
+.stat{font-size:2rem;font-weight:850;letter-spacing:-.06em;color:var(--accent-3)}
+.note{padding:24px;background:linear-gradient(135deg,rgba(255,211,138,.12),rgba(136,215,255,.08))}
+.downloads{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.download-card{display:flex;flex-direction:column;min-height:210px;padding:22px}
+.download-card small{color:var(--muted);line-height:1.6}
+.download-card .btn{margin-top:auto;width:fit-content}
+.code{display:block;padding:18px;border-radius:18px;overflow-x:auto;border:1px solid var(--line);background:rgba(0,0,0,.32);color:#e8f3ff;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.9rem;line-height:1.65}
+.link-cloud{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.link-list{display:grid;gap:9px;margin-top:14px}
+.link-cloud a,.link-list a{color:#e8f3ff;text-decoration:none;border-bottom:1px solid rgba(136,215,255,.32)}
+.link-cloud a:hover,.link-list a:hover{color:var(--warning);border-bottom-color:rgba(255,211,138,.72)}
+.support-box{border:1px solid rgba(255,211,138,.28);background:linear-gradient(135deg,rgba(255,211,138,.12),rgba(240,183,255,.08))}
+.mono-small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.93rem;line-height:1.8}
+.footer{padding:46px 0 56px;color:var(--muted);border-top:1px solid var(--line)}
+.footer-inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+@media(max-width:900px){.hero-grid,.grid-2,.grid-3,.downloads{grid-template-columns:1fr}.cosmic-card{min-height:360px}.nav-links{display:none}}
+@media(max-width:520px){.container{width:min(100% - 28px,var(--max))}.hero{padding-top:56px}h1{font-size:2.8rem}.actions .btn{width:100%}}
+  </style>
+</head>
+<body class="lang-en">
+
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand"><div class="brand-mark" aria-hidden="true"></div><span>HTSC · SMCHS</span></div>
+      <div class="nav-right">
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="#hypothesis" class="en-only">Hypothesis</a>
+          <a href="#hypothesis" class="es-only">Hipótesis</a>
+          <a href="#compatibility" class="en-only">Compatibility</a>
+          <a href="#compatibility" class="es-only">Compatibilidad</a>
+          <a href="#model" class="en-only">Toy model</a>
+          <a href="#model" class="es-only">Toy model</a>
+          <a href="#faq">FAQ</a>
+          <a href="#downloads" class="en-only">Downloads</a>
+          <a href="#downloads" class="es-only">Descargas</a>
+          <a href="#connect" class="en-only">Author</a>
+          <a href="#connect" class="es-only">Autor</a>
+        </nav>
+        <div class="lang-toggle" role="group" aria-label="Language selector">
+          <button class="lang-btn active" id="btn-en" onclick="setLang('en')" aria-pressed="true">EN</button>
+          <button class="lang-btn" id="btn-es" onclick="setLang('es')" aria-pressed="false">ES</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="badge"><span class="badge-dot"></span>
+            <span class="en-only">Working hypothesis · Open computational framework</span>
+            <span class="es-only">Hipótesis de trabajo · Marco computacional abierto</span>
+          </div>
+          <h1><span class="gradient-text en-only">Hypothesis of Sectorial Cosmological Transition</span><span class="gradient-text es-only">Hipótesis de Transición Sectorial Cosmológica</span></h1>
+          <p class="lead en-only">A working hypothesis compatible with the Big Bang, Lambda-CDM, redshift and the cosmic microwave background. It asks whether the age of the observable universe must necessarily be identified with the age of total physical reality.</p>
+          <p class="lead es-only">Una hipótesis de trabajo compatible con el Big Bang, Lambda-CDM, el corrimiento al rojo y el fondo cósmico de microondas. Pregunta si la edad del universo observable debe identificarse necesariamente con la edad total de la realidad física.</p>
+          <div class="actions">
+            <a class="btn primary" href="paper/HTSC_v3_2_1_Paper_Extendido_JorgeBravoChaves.pdf">
+              <span class="en-only">Read PDF v3.2.1</span>
+              <span class="es-only">Leer PDF v3.2.1</span>
+            </a>
+            <a class="btn" href="https://github.com/JorgeBC420/MonteCarloSimulatorHipotesisSectorial">
+              <span class="en-only">GitHub Repository</span>
+              <span class="es-only">Repositorio GitHub</span>
+            </a>
+            <a class="btn" href="https://github.com/JorgeBC420/MonteCarloSimulatorHipotesisSectorial/archive/refs/heads/main.zip">
+              <span class="en-only">Download ZIP</span>
+              <span class="es-only">Descargar ZIP</span>
+            </a>
+          </div>
+        </div>
+        <div class="cosmic-card" aria-label="Conceptual visualization of distant cosmological regions">
+          <div class="equation">
+            <strong>t(S₀) ≠ t(U)</strong>
+            <span class="en-only">The observable horizon is not automatically the ontological limit of physical reality.</span>
+            <span class="es-only">El horizonte observable no debe confundirse automáticamente con el límite ontológico de la realidad física.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPATIBILITY -->
+    <section id="compatibility" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow en-only">Cosmological compatibility</div>
+          <div class="eyebrow es-only">Compatibilidad cosmológica</div>
+          <h2 class="en-only">Big Bang, Lambda-CDM, redshift and CMB are not rejected: their domain is clarified.</h2>
+          <h2 class="es-only">El Big Bang, Lambda-CDM, redshift y CMB no se rechazan: se clarifica su dominio.</h2>
+          <p class="en-only">HTSC does not begin by denying standard cosmology. The framework preserves the Big Bang as a description of the early hot and dense state of the observable universe, treats cosmological redshift as evidence of expansion, keeps the CMB as a central fossil-radiation constraint, and uses Lambda-CDM as an effective model inside the observable sector S₀.</p>
+          <p class="es-only">HTSC no parte de negar la cosmología estándar. Conserva el Big Bang como descripción del estado temprano caliente y denso del universo observable, trata el corrimiento al rojo como evidencia de expansión, mantiene el CMB como restricción central y usa Lambda-CDM como modelo efectivo dentro del sector observable S₀.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>Big Bang</h3>
+            <p class="en-only">Measurable transition of S₀, not automatic proof that no physical reality existed before it.</p>
+            <p class="es-only">Transición medible de S₀, no prueba automática de que antes no existía ninguna realidad física.</p>
+          </article>
+          <article class="card">
+            <h3>Lambda-CDM / ΛCDM</h3>
+            <p class="en-only">Internal baseline and effective cosmological reference for the observable sector.</p>
+            <p class="es-only">Baseline interno y referencia cosmológica efectiva para el sector observable.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">Redshift and CMB</h3>
+            <h3 class="es-only">Redshift y CMB</h3>
+            <p class="en-only">Fundamental constraints for any extension of the cosmological framework.</p>
+            <p class="es-only">Restricciones fundamentales para cualquier extensión del marco cosmológico.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- HYPOTHESIS -->
+    <section id="hypothesis" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow en-only">Core idea</div>
+          <div class="eyebrow es-only">Idea central</div>
+          <h2 class="en-only">Not rejecting the Big Bang: reframing its scope.</h2>
+          <h2 class="es-only">No rechazar el Big Bang: reenmarcar su alcance.</h2>
+          <p class="en-only">The hypothesis does not claim that the Big Bang, the CMB, cosmic expansion or ΛCDM are false inside the observable domain. It proposes interpretive caution: the inferred age of our observable sector S₀ does not automatically have to be the absolute age of total physical reality U.</p>
+          <p class="es-only">La hipótesis no afirma que el Big Bang, el CMB, la expansión cósmica o ΛCDM sean falsos dentro del dominio observable. Propone cautela interpretativa: la edad inferida de nuestro sector observable S₀ no tiene por qué ser automáticamente la edad absoluta de toda la realidad física U.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>S₀ · <span class="en-only">observable sector</span><span class="es-only">sector observable</span></h3>
+            <p class="en-only">The causal region whose light, radiation and structure have been able to reach us.</p>
+            <p class="es-only">La región causal cuya luz, radiación y estructura han podido llegar hasta nosotros.</p>
+          </article>
+          <article class="card">
+            <h3>U · <span class="en-only">total physical reality</span><span class="es-only">realidad física total</span></h3>
+            <p class="en-only">A conceptual frame for discussing physical reality beyond the observable horizon.</p>
+            <p class="es-only">Un marco conceptual para discutir la realidad física más allá del horizonte observable.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">Sectorial transition</h3>
+            <h3 class="es-only">Transición sectorial</h3>
+            <p class="en-only">The Big Bang as the foundational transition of the observable sector.</p>
+            <p class="es-only">El Big Bang como transición fundacional del sector observable.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- HORIZONS -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow en-only">Observable universe</div>
+          <div class="eyebrow es-only">Universo observable</div>
+          <h2 class="en-only">A hypothesis about horizons, not a denial of evidence.</h2>
+          <h2 class="es-only">Una hipótesis sobre horizontes, no una negación de evidencia.</h2>
+          <p class="en-only">The observable universe is the region whose light has been able to reach us. Total physical reality may be finite or infinite, but it is not fully accessible through direct observation. This distinction allows broader cosmological domains to be discussed without abandoning ancient light, spectra, redshift, CMB, early galaxies and large-scale structure.</p>
+          <p class="es-only">El universo observable es la región cuya luz ha podido alcanzarnos. La realidad física total podría ser finita o infinita, pero no es completamente accesible por observación directa. Esta distinción permite discutir dominios cosmológicos más amplios sin abandonar la luz antigua, los espectros, el redshift, el CMB, las galaxias tempranas y la estructura a gran escala.</p>
+        </div>
+        <div class="grid-2">
+          <article class="card">
+            <h3 class="en-only">Searchable question</h3>
+            <h3 class="es-only">Pregunta central</h3>
+            <p class="en-only">Does the age of 13.8 billion years describe all physical existence, or the inferred history of our observable sector?</p>
+            <p class="es-only">¿La edad de 13.8 mil millones de años describe toda la existencia física o la historia inferida de nuestro sector observable?</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">Possible signals</h3>
+            <h3 class="es-only">Señales posibles</h3>
+            <p class="en-only">Early massive galaxies, high-redshift quiescent objects, cosmological tensions and statistical tails.</p>
+            <p class="es-only">Galaxias tempranas masivas, objetos quiescent de alto redshift, tensiones cosmológicas y colas estadísticas.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODEL -->
+    <section id="model" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow">SMCHS / MCSSH</div>
+          <h2 class="en-only">A toy model for tail signals, not certainties.</h2>
+          <h2 class="es-only">Un toy model para señales de cola, no certezas.</h2>
+          <p class="en-only">The Monte Carlo Simulator for the Sectorial Hypothesis explores whether a small fraction of inherited maturity could thicken the tail of early massive galaxies without deforming the global distribution. Its role is not to prove the hypothesis, but to make it more measurable, reproducible and falsifiable.</p>
+          <p class="es-only">El Simulador Monte Carlo de Hipótesis Sectorial explora si una pequeña fracción de madurez heredada podría engrosar la cola de galaxias tempranas masivas sin deformar la distribución global. Su función no es probar la hipótesis, sino hacerla más medible, reproducible y falsable.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <div class="stat">Q99</div>
+            <h3 class="en-only">Tail metrics</h3>
+            <h3 class="es-only">Métricas de cola</h3>
+            <p class="en-only">Extreme percentiles, ΔP_tail and SNR_tail.</p>
+            <p class="es-only">Percentiles extremos, ΔP_tail y SNR_tail.</p>
+          </article>
+          <article class="card">
+            <div class="stat">KS</div>
+            <h3 class="en-only">Global control</h3>
+            <h3 class="es-only">Control global</h3>
+            <p class="en-only">Tests whether the tail changes without breaking the full population.</p>
+            <p class="es-only">Evalúa si la cola cambia sin romper la población completa.</p>
+          </article>
+          <article class="card">
+            <div class="stat">N</div>
+            <h3 class="en-only">Reproducibility</h3>
+            <h3 class="es-only">Reproducibilidad</h3>
+            <p class="en-only">Seeds, logs, CSVs, figures and ZIP archives.</p>
+            <p class="es-only">Semillas, logs, CSVs, figuras y archivos ZIP.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGIDITY + STATUS -->
+    <section class="section">
+      <div class="container grid-2">
+        <div class="note">
+          <div class="eyebrow en-only">Rigidity principle</div>
+          <div class="eyebrow es-only">Principio de rigidez</div>
+          <h2 class="en-only">The goal is not to make it look beautiful, but complete.</h2>
+          <h2 class="es-only">El objetivo no es que luzca bonito, sino completo.</h2>
+          <p class="en-only">Every improvement should increase falsifiability: harder filters, seed comparison, external baselines and parameter documentation.</p>
+          <p class="es-only">Cada mejora debe aumentar la falsabilidad: filtros más duros, comparación por semillas, baselines externos y documentación de parámetros.</p>
+        </div>
+        <div class="card">
+          <h3 class="en-only">Current status</h3>
+          <h3 class="es-only">Estado actual</h3>
+          <p class="en-only">HTSC v3.2.1 is a working hypothesis and SMCHS is an exploratory computational prototype. It is not peer-reviewed.</p>
+          <p class="es-only">HTSC v3.2.1 es una hipótesis de trabajo y SMCHS es un prototipo computacional exploratorio. No ha sido revisado por pares.</p>
+          <pre class="code">python main.py --n 400000 --seed 42
+python main.py --n 400000 --seed 42 --remnant-mode metric
+python main.py --n 400000 --seed 42 --remnant-mode geometric</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow">FAQ</div>
+          <h2 class="en-only">Questions this hypothesis tries to formulate.</h2>
+          <h2 class="es-only">Preguntas que esta hipótesis intenta formular.</h2>
+        </div>
+        <div class="grid-2">
+          <article class="card">
+            <h3 class="en-only">Does HTSC reject the Big Bang?</h3>
+            <h3 class="es-only">¿HTSC rechaza el Big Bang?</h3>
+            <p class="en-only">No. It treats the Big Bang as the measurable transition of S₀ while questioning whether it proves the absolute beginning of all physical reality U.</p>
+            <p class="es-only">No. Lo trata como la transición medible de S₀ mientras pregunta si prueba el inicio absoluto de toda la realidad física U.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">Is it compatible with Lambda-CDM?</h3>
+            <h3 class="es-only">¿Es compatible con Lambda-CDM?</h3>
+            <p class="en-only">Yes. Lambda-CDM is preserved as the effective baseline inside the observable sector.</p>
+            <p class="es-only">Sí. Lambda-CDM se conserva como baseline efectivo dentro del sector observable.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">What role do redshift and CMB play?</h3>
+            <h3 class="es-only">¿Qué papel tienen redshift y CMB?</h3>
+            <p class="en-only">They remain central constraints. They are not removed.</p>
+            <p class="es-only">Siguen siendo restricciones centrales. No se eliminan.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">Why JWST early massive galaxies?</h3>
+            <h3 class="es-only">¿Por qué galaxias tempranas JWST?</h3>
+            <p class="en-only">They stress-test formation timelines and statistical tails.</p>
+            <p class="es-only">Ponen a prueba los tiempos de formación y las colas estadísticas.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">Is this a theory of infinite universes?</h3>
+            <h3 class="es-only">¿Es una teoría de universos infinitos?</h3>
+            <p class="en-only">No. It distinguishes the observable universe from total physical reality without requiring infinity.</p>
+            <p class="es-only">No. Distingue el universo observable de la realidad física total sin requerir infinitud.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">What does the toy model prove?</h3>
+            <h3 class="es-only">¿Qué prueba el toy model?</h3>
+            <p class="en-only">It does not prove the physical hypothesis. It tests whether a sectorial signal can appear as a reproducible statistical tail.</p>
+            <p class="es-only">No prueba la hipótesis física. Evalúa si una señal sectorial puede aparecer como cola estadística reproducible.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOWNLOADS -->
+    <section id="downloads" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow en-only">Resources</div>
+          <div class="eyebrow es-only">Recursos</div>
+          <h2 class="en-only">Paper, code and downloads.</h2>
+          <h2 class="es-only">Paper, código y descargas.</h2>
+          <p class="en-only">This repository centralizes the hypothesis, toy model and technical documentation.</p>
+          <p class="es-only">Este repositorio centraliza la hipótesis, el toy model y la documentación técnica.</p>
+        </div>
+        <div class="downloads">
+          <article class="download-card">
+            <h3>HTSC Paper v3.2.1</h3>
+            <small class="en-only">Extended bilingual-access research document.</small>
+            <small class="es-only">Documento extendido de investigación, acceso bilingüe.</small>
+            <a class="btn primary" href="paper/HTSC_v3_2_1_Paper_Extendido_JorgeBravoChaves.pdf">
+              <span class="en-only">Open PDF</span><span class="es-only">Abrir PDF</span>
+            </a>
+          </article>
+          <article class="download-card">
+            <h3 class="en-only">Repository</h3>
+            <h3 class="es-only">Repositorio</h3>
+            <small class="en-only">Source code, docs, issues and version history.</small>
+            <small class="es-only">Código fuente, documentación, issues e historial de versiones.</small>
+            <a class="btn" href="https://github.com/JorgeBC420/MonteCarloSimulatorHipotesisSectorial">
+              <span class="en-only">View on GitHub</span><span class="es-only">Ver en GitHub</span>
+            </a>
+          </article>
+          <article class="download-card">
+            <h3>Toy model ZIP</h3>
+            <small class="en-only">Automatic download of the latest public main branch.</small>
+            <small class="es-only">Descarga automática de la rama main pública más reciente.</small>
+            <a class="btn" href="https://github.com/JorgeBC420/MonteCarloSimulatorHipotesisSectorial/archive/refs/heads/main.zip">
+              <span class="en-only">Download ZIP</span><span class="es-only">Descargar ZIP</span>
+            </a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONNECT -->
+    <section id="connect" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow en-only">Connect</div>
+          <div class="eyebrow es-only">Conectar</div>
+          <h2 class="en-only">An open ecosystem of writing, science and code.</h2>
+          <h2 class="es-only">Un ecosistema abierto de escritura, ciencia y código.</h2>
+          <p class="en-only">HTSC and SMCHS are part of a broader ecosystem of books, essays, simulators, repositories and audit tools.</p>
+          <p class="es-only">HTSC y SMCHS forman parte de un ecosistema más amplio de libros, ensayos, simuladores, repositorios y herramientas de auditoría.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>🌐 <span class="en-only">Ecosystem</span><span class="es-only">Ecosistema</span></h3>
+            <div class="link-cloud">
+              <a href="https://jorgebc420.github.io/talking_with_giant_minds/" target="_blank" rel="noreferrer">La Materia que se Pregunta</a>
+              <a href="https://jorgebc420.github.io/MateriaQueSePregunta/" target="_blank" rel="noreferrer">Charlando con Mentes GIGANTES</a>
+              <a href="https://streamlit.app" target="_blank" rel="noreferrer">SRCE Mathematical Simulator</a>
+            </div>
+          </article>
+          <article class="card">
+            <h3>💻 <span class="en-only">Code and research</span><span class="es-only">Código e investigación</span></h3>
+            <div class="link-list">
+              <a href="https://github.com/JorgeBC420" target="_blank" rel="noreferrer">GitHub · JorgeBC420</a>
+              <a href="https://github.com/JorgeBC420/MonteCarloSimulatorHipotesisSectorial" target="_blank" rel="noreferrer">MonteCarloSimulatorHipotesisSectorial</a>
+              <a href="https://github.com/JorgeBC420/Spectral-Rigidity-Calibration-Engine" target="_blank" rel="noreferrer">Spectral-Rigidity-Calibration-Engine</a>
+            </div>
+          </article>
+          <article class="card">
+            <h3>📱 <span class="en-only">Social and contact</span><span class="es-only">Redes y contacto</span></h3>
+            <div class="link-cloud">
+              <a href="https://cr.linkedin.com/in/jorge-bravo-chaves-037421377" target="_blank" rel="noreferrer">LinkedIn</a>
+              <a href="https://www.facebook.com/jorgebravochaves.escritor" target="_blank" rel="noreferrer">Facebook</a>
+              <a href="https://instagram.com/jorgebc420" target="_blank" rel="noreferrer">Instagram · @jorgebc420</a>
+              <a href="https://x.com/jorgebravoch" target="_blank" rel="noreferrer">X · @jorgebravoch</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUPPORT -->
+    <section id="support" class="section">
+      <div class="container grid-2">
+        <div class="card support-box">
+          <div class="eyebrow en-only">Support the research</div>
+          <div class="eyebrow es-only">Apoyo a la investigación</div>
+          <h2 class="en-only">Free access, voluntary support.</h2>
+          <h2 class="es-only">Acceso libre, apoyo voluntario.</h2>
+          <p class="en-only">Access is free by conviction. If this work has been valuable, you can support its continuity.</p>
+          <p class="es-only">El acceso es gratuito por convicción. Si este trabajo le ha aportado valor, puede apoyar su continuidad.</p>
+        </div>
+        <div class="card">
+          <h3 class="en-only">Support channels</h3>
+          <h3 class="es-only">Canales de apoyo</h3>
+          <div class="mono-small">
+            <div>Ko-fi: <a href="https://ko-fi.com/jorgebravochaves" target="_blank" rel="noreferrer">ko-fi.com/jorgebravochaves</a></div>
+            <div>PayPal: @JorgeBravoChaves</div>
+            <div>SINPE Móvil: 71880297</div>
+          </div>
+          <p style="margin-top:16px" class="en-only">Support does not condition results, conclusions or access.</p>
+          <p style="margin-top:16px" class="es-only">El apoyo no condiciona resultados, conclusiones ni acceso.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATUS -->
+    <section id="status" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="eyebrow en-only">Scientific note</div>
+          <div class="eyebrow es-only">Nota científica</div>
+          <h2 class="en-only">An invitation to review, not a final declaration.</h2>
+          <h2 class="es-only">Una invitación a revisar, no una declaración final.</h2>
+          <p class="en-only">The hypothesis seeks to transform a cosmological intuition into measurable questions.</p>
+          <p class="es-only">La hipótesis busca transformar una intuición cosmológica en preguntas medibles.</p>
+        </div>
+        <div class="grid-2">
+          <article class="card">
+            <h3 class="en-only">How it can be weakened</h3>
+            <h3 class="es-only">Cómo puede debilitarse</h3>
+            <p class="en-only">If ΛCDM with refined baryonic astrophysics, JADES, IllustrisTNG or SIMBA explain the early tail without persistent residuals, HTSC loses explanatory necessity.</p>
+            <p class="es-only">Si ΛCDM con astrofísica bariónica refinada, JADES, IllustrisTNG o SIMBA explican la cola temprana sin residuos persistentes, HTSC pierde necesidad explicativa.</p>
+          </article>
+          <article class="card">
+            <h3 class="en-only">How it can gain interest</h3>
+            <h3 class="es-only">Cómo puede ganar interés</h3>
+            <p class="en-only">If pre-registered parameters produce reproducible tail signals resistant to more realistic filters, the framework gains phenomenological value.</p>
+            <p class="es-only">Si parámetros pre-registrados producen señales de cola reproducibles y resistentes a filtros más realistas, el marco gana valor fenomenológico.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© Jorge Eduardo Bravo Chaves · San José, Costa Rica</span>
+      <span>HTSC v3.2.1 · SMCHS / MCSSH toy model</span>
+    </div>
+  </footer>
+
+  <script>
+    function setLang(lang) {
+      document.body.className = 'lang-' + lang;
+      document.documentElement.lang = lang;
+
+      var btnEn = document.getElementById('btn-en');
+      var btnEs = document.getElementById('btn-es');
+
+      if (lang === 'en') {
+        btnEn.classList.add('active');
+        btnEn.classList.remove('active-es');
+        btnEs.classList.remove('active', 'active-es');
+        btnEn.setAttribute('aria-pressed', 'true');
+        btnEs.setAttribute('aria-pressed', 'false');
+      } else {
+        btnEs.classList.add('active', 'active-es');
+        btnEn.classList.remove('active', 'active-es');
+        btnEs.setAttribute('aria-pressed', 'true');
+        btnEn.setAttribute('aria-pressed', 'false');
+      }
+
+      try { localStorage.setItem('htsc-lang', lang); } catch(e) {}
+    }
+
+    // Restore preference
+    try {
+      var saved = localStorage.getItem('htsc-lang');
+      if (saved === 'es') setLang('es');
+    } catch(e) {}
+  </script>
+</body>
+</html>

@@ -1,14 +1,22 @@
 """
 core/poblacion.py — Pipeline de 5 fases
-SMCHS v0.5.3 / Hipótesis Sectorial v3.1
+SMCHS v0.5.7 / Hipótesis Sectorial v3.2.1
+
+CHANGELOG v0.5.7:
+    Supresión UV por quenching (parámetro --quench-uv):
+        Galaxias químicamente maduras (Z_met > Z_quench_thresh) y con masa
+        suficiente (log_m > M_quench_thresh) reciben un desplazamiento positivo
+        en M_UV (las hace más débiles en UV → menos detectables).
+        Esto corrige el sesgo de sobredetectabilidad de galaxias quiescentes
+        masivas que en la realidad son UV-débiles aunque sean masivas.
+        El parámetro es configurable y desactivado por defecto para preservar
+        retrocompatibilidad con todas las corridas anteriores.
 
 CHANGELOG v0.5.3:
     Separación explícita señal / observado / ruido en Fase C:
         dt_signal   = t_chem_true − t_ΛCDM   [componente física pura]
         dt_observed = t_chem_obs  − t_ΛCDM   [componente medible con ruido]
         dt_noise    = dt_observed − dt_signal [contaminación por eps_Z]
-    Permite evaluar si el exceso de madurez química persiste
-    más allá de fluctuaciones estocásticas de metalicidad.
 
 v0.4.0: ruido eps_Z/eps_M en catálogo, hashlib.sha256, Schechter por bins.
 v0.3.0: Δt_i correcto (invertir Z_met con ruido, no Z_det sin ruido).
@@ -16,10 +24,11 @@ v0.2.0: catálogo base compartido entre modelos.
 
 Diseño de catálogo pareado completo:
     catalogo = inicializar_catalogo(N)
-    # Catálogo contiene: z, t_lcdm, log_m_seed, eps_Z, eps_M
     pop_a = construir_poblacion(catalogo, f_rem=0.0)
     pop_b = construir_poblacion(catalogo, f_rem=0.01)
     # Mismos objetos, mismo ruido, solo varía la inyección → diferencia limpia.
+    # Con quench_uv=True, las galaxias maduras son menos detectables:
+    pop_c = construir_poblacion(catalogo, f_rem=0.01, quench_uv=True)
 """
 
 import hashlib
@@ -29,8 +38,9 @@ import numpy as np
 import config as cfg
 from config import (
     N, MSTAR_LOG10_0, MSTAR_EVO_LAMB, SCHECHTER_A, SCHECHTER_Z_BINS,
-    Z_INICIAL, ALPHA_Z, SIGMA_Z, BETA_M, SIGMA_M, MUV_OFFSET, 
-    MUV_SLOPE, MUV_LIM_BASE, MUV_LIM_SLOPE, F_REM_DEFAULT, T_PREV_MU, T_PREV_SIG
+    Z_INICIAL, ALPHA_Z, SIGMA_Z, BETA_M, SIGMA_M, MUV_OFFSET,
+    MUV_SLOPE, MUV_LIM_BASE, MUV_LIM_SLOPE, F_REM_DEFAULT, T_PREV_MU, T_PREV_SIG,
+    Z_QUENCH_THRESH, M_QUENCH_THRESH, DELTA_UV_QUENCH,
 )
 from core.cosmologia import edad_lcdm, samplear_redshift, schechter_sample
 from core.metric_dilution import f_rem_eff_z
@@ -186,12 +196,14 @@ def inyectar_madurez(catalogo: dict[str, Any],
 # ─────────────────────────────────────────────────────────────────────────────
 
 def calcular_observables(catalogo: dict[str, Any],
-                         t_eff: np.ndarray[Any, Any]) -> dict[str, Any]:
+                         t_eff: np.ndarray[Any, Any],
+                         quench_uv: bool = False,
+                         z_quench_thresh: float = cfg.Z_QUENCH_THRESH,
+                         m_quench_thresh: float = cfg.M_QUENCH_THRESH,
+                         delta_uv_quench: float = cfg.DELTA_UV_QUENCH) -> dict[str, Any]:
     """
-    Fase C: t_eff → observables con separación señal/ruido (v0.5.3).
-
-    Usa eps_Z y eps_M del catálogo base (compartidos entre modelos).
-    Separa explícitamente la componente física de la observacional:
+    Fase C: t_eff → observables con separación señal/ruido (v0.5.3) y
+    supresión UV por quenching opcional (v0.5.7).
 
     ── Metalicidad ──────────────────────────────────────────────────────
         Z_true = Z_inicial + α·log(1 + t_eff)          [señal pura]
@@ -200,21 +212,45 @@ def calcular_observables(catalogo: dict[str, Any],
     ── Masa estelar ─────────────────────────────────────────────────────
         log M* = clip(log M_seed + β·t_eff + eps_M, 6, 13.5)
 
-    ── Magnitud UV proxy ────────────────────────────────────────────────
-        M_UV = MUV_OFFSET + MUV_SLOPE·(log M* − 9)
+    ── Magnitud UV proxy (base) ──────────────────────────────────────────
+        M_UV_base = MUV_OFFSET + MUV_SLOPE·(log M* − 9)
 
-    ── Separación Δt_i señal / observado / ruido (Predicción P2 v3.1) ──
+    ── Supresión UV por quenching (quench_uv=True) ───────────────────────
+        Galaxias químicamente maduras tienden a ser quiescentes:
+        apagaron su formación estelar y su emisión UV cae drásticamente
+        porque ya no tienen estrellas OB jóvenes de vida corta.
 
-        t_chem_true = expm1((Z_true − Z_ini) / α)   ← solo física
-        t_chem_obs  = expm1((Z_obs  − Z_ini) / α)   ← con ruido
+        Criterio de quenching (ambas condiciones simultáneas):
+            Z_obs > z_quench_thresh   (metalicidad alta → enriquecimiento avanzado)
+            log_m > m_quench_thresh   (masa suficiente para retener gas procesado)
 
+        Efecto sobre M_UV:
+            M_UV = M_UV_base + delta_uv_quench · sigmoid(Z_obs − z_quench_thresh)
+
+        El sigmoid suaviza la transición: las galaxias en el borde del umbral
+        reciben supresión parcial, no un salto binario. Esto evita artefactos
+        en las distribuciones y es más realista que un corte duro.
+
+        Valores por defecto (pre-registrados, no ajustar para mejorar fit):
+            z_quench_thresh = 0.35   (Z/Z☉; umbral de madurez química)
+            m_quench_thresh = 9.5    (log10 M★/M☉)
+            delta_uv_quench = 2.5    (mag; desplazamiento máximo hacia UV-débil)
+
+        Propósito metodológico: con quench_uv=True, algunas galaxias masivas
+        y maduras del modelo sectorial dejan de ser visibles en el filtro proxy.
+        Si la cola sectorial sigue superando a ΛCDM bajo este filtro más estricto,
+        el resultado es más robusto (sobrevivió un filtro que la penaliza).
+        Si la señal desaparece, el toy model pierde poder discriminativo bajo
+        condiciones más realistas de observabilidad.
+
+        Expuesto como parámetro configurable para comparar:
+            python main.py --remnant-mode flat               → filtro base
+            python main.py --remnant-mode flat --quench-uv  → filtro conservador
+
+    ── Separación Δt_i señal / observado / ruido ────────────────────────
         dt_signal   = t_chem_true − t_ΛCDM   → desacople FÍSICO
         dt_observed = t_chem_obs  − t_ΛCDM   → desacople MEDIBLE
         dt_noise    = dt_observed − dt_signal → contaminación por eps_Z
-
-    dt_signal > 0 con f_rem > 0 → la hipótesis produce madurez real.
-    Si dt_signal ≈ 0 pero dt_observed > 0, el exceso es solo ruido.
-    La detectabilidad se estima con métricas de cola (Q99/SNR_tail), no con la mediana.
     """
     t_lcdm  = catalogo["t_lcdm"]
     log_m_s = catalogo["log_m_seed"]
@@ -228,9 +264,30 @@ def calcular_observables(catalogo: dict[str, Any],
     # ── Masa estelar (observable) ─────────────────────────────────────────────
     log_m = np.clip(log_m_s + BETA_M * t_eff + eps_M, 6.0, 13.5)
 
-    # ── Magnitud UV proxy ────────────────────────────────────────────────────
+    # ── Magnitud UV proxy (base) ─────────────────────────────────────────────
     lum_proxy = 10 ** (0.4 * log_m)
     M_UV = MUV_OFFSET + MUV_SLOPE * (log_m - 9.0)
+
+    # ── Supresión UV por quenching (v0.5.7) ──────────────────────────────────
+    is_quenched = np.zeros(len(log_m), dtype=bool)
+    if quench_uv:
+        # Criterio: maduras químicamente Y con masa suficiente
+        candidatas = (Z_obs > z_quench_thresh) & (log_m > m_quench_thresh)
+        # Sigmoid suavizada sobre el exceso de metalicidad respecto al umbral
+        # sigmoid(x) = 1/(1+exp(-k·x)); k=10 da transición en ~0.1 Z/Z☉
+        exceso_Z = Z_obs - z_quench_thresh
+        sigmoid  = 1.0 / (1.0 + np.exp(-10.0 * exceso_Z))
+        supresion = delta_uv_quench * sigmoid
+        # Solo aplicar donde ambos criterios se cumplen
+        M_UV = np.where(candidatas, M_UV + supresion, M_UV)
+        is_quenched = candidatas
+        n_quenched = int(candidatas.sum())
+        if n_quenched > 0:
+            logger.debug(
+                "[quench_uv] %d objetos suprimidos (%.2f%%) | ΔM_UV medio=+%.2f mag",
+                n_quenched, n_quenched / len(log_m) * 100,
+                float(supresion[candidatas].mean()),
+            )
 
     # ── Δt_i: señal, observado, ruido ────────────────────────────────────────
     def _t_chem(Z: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
@@ -245,21 +302,24 @@ def calcular_observables(catalogo: dict[str, Any],
 
     return {
         # metalicidad
-        "Z_true":       Z_true,
-        "Z_met":        Z_obs,         # alias observado (compatibilidad)
+        "Z_true":         Z_true,
+        "Z_met":          Z_obs,          # alias observado (compatibilidad)
         # masa / luminosidad
-        "log_m":        log_m,
-        "lum_proxy":    lum_proxy,
-        "M_UV":         M_UV,
+        "log_m":          log_m,
+        "lum_proxy":      lum_proxy,
+        "M_UV":           M_UV,           # incluye supresión si quench_uv=True
+        # quenching
+        "is_quenched":    is_quenched,    # máscara de objetos suprimidos
+        "quench_uv":      quench_uv,
         # t_chem
-        "t_chem_true":  t_chem_true,
-        "t_chem_obs":   t_chem_obs,
-        "t_chem":       t_chem_obs,    # alias (compatibilidad)
+        "t_chem_true":    t_chem_true,
+        "t_chem_obs":     t_chem_obs,
+        "t_chem":         t_chem_obs,     # alias (compatibilidad)
         # Δt_i tripartito
-        "dt_signal":    dt_signal,
-        "dt_observed":  dt_observed,
-        "dt_noise":     dt_noise,
-        "delta_t_obs":  dt_observed,   # alias (compatibilidad)
+        "dt_signal":      dt_signal,
+        "dt_observed":    dt_observed,
+        "dt_noise":        dt_noise,
+        "delta_t_obs":    dt_observed,    # alias (compatibilidad)
     }
 
 
@@ -300,50 +360,60 @@ def construir_poblacion(catalogo: dict[str, Any],
                         metric_dilution: bool = False,
                         w_rem: float = 0.0,
                         z_ref: float = 12.0,
-                        f_max: float = 0.08) -> dict[str, Any]:
+                        f_max: float = 0.08,
+                        quench_uv: bool = False,
+                        z_quench_thresh: float = cfg.Z_QUENCH_THRESH,
+                        m_quench_thresh: float = cfg.M_QUENCH_THRESH,
+                        delta_uv_quench: float = cfg.DELTA_UV_QUENCH) -> dict[str, Any]:
     """
     Pipeline completo B→D sobre un catálogo base dado.
 
-    La semilla para la inyección estocástica se deriva con SHA-256 a partir
-    de (f_rem, t_mu), lo que garantiza reproducibilidad entre sesiones.
+    v0.5.7: agrega quench_uv para activar supresión UV en galaxias quiescentes.
+    Con quench_uv=False (default) el comportamiento es idéntico a v0.5.3/5.6.
 
-    El ruido eps_Z y eps_M viene del catálogo base → idéntico entre modelos.
-    Las únicas diferencias entre construir_poblacion(cat, f_rem=0.0) y
-    construir_poblacion(cat, f_rem=0.01) son los objetos marcados como
-    remanentes y su Δt_heredada.
-
-    Ejemplo de análisis contrafactual limpio:
-        cat   = inicializar_catalogo(N)
-        base  = construir_poblacion(cat, f_rem=0.0)   # ΛCDM puro
-        sect  = construir_poblacion(cat, f_rem=0.01)  # +1% madurez heredada
-        # Mismos objetos, mismo ruido, distinto f_rem → diferencia limpia.
+    Ejemplo de comparación con y sin filtro conservador:
+        cat  = inicializar_catalogo(N)
+        base = construir_poblacion(cat, f_rem=0.0)
+        sect = construir_poblacion(cat, f_rem=0.01)              # filtro base
+        sect_q = construir_poblacion(cat, f_rem=0.01, quench_uv=True)  # filtro conservador
+        # Si sect_q sigue mostrando cola > base, el resultado es más robusto.
     """
     if rng is None:
         rng = np.random.default_rng(_semilla_estable(f_rem, t_mu))
 
-    t_eff, es_rem, delta_t = inyectar_madurez(catalogo, f_rem, t_mu, t_sig, rng, metric_dilution=metric_dilution, w_rem=w_rem, z_ref=z_ref, f_max=f_max)
-    obs     = calcular_observables(catalogo, t_eff)
+    t_eff, es_rem, delta_t = inyectar_madurez(
+        catalogo, f_rem, t_mu, t_sig, rng,
+        metric_dilution=metric_dilution, w_rem=w_rem, z_ref=z_ref, f_max=f_max,
+    )
+    obs     = calcular_observables(
+        catalogo, t_eff,
+        quench_uv=quench_uv,
+        z_quench_thresh=z_quench_thresh,
+        m_quench_thresh=m_quench_thresh,
+        delta_uv_quench=delta_uv_quench,
+    )
     visible = aplicar_filtro_detectabilidad_proxy(obs["M_UV"], catalogo["z"])
 
     return {
         # catálogo base
-        "z":          catalogo["z"],
-        "t_lcdm":     catalogo["t_lcdm"],
-        "log_m_seed": catalogo["log_m_seed"],
+        "z":              catalogo["z"],
+        "t_lcdm":         catalogo["t_lcdm"],
+        "log_m_seed":     catalogo["log_m_seed"],
         # inyección
-        "t_eff":      t_eff,
-        "es_rem":     es_rem,
-        "delta_t":    delta_t,
-        # observables
+        "t_eff":          t_eff,
+        "es_rem":         es_rem,
+        "delta_t":        delta_t,
+        # observables (incluye is_quenched, quench_uv)
         **obs,
         # filtro
-        "visible":    visible,
+        "visible":        visible,
         # metadata
-        "f_rem":      f_rem,
-        "t_mu":       t_mu,
+        "f_rem":          f_rem,
+        "t_mu":           t_mu,
         "metric_dilution": metric_dilution,
-        "w_rem":      w_rem,
-        "z_ref":      z_ref,
-        "f_max":      f_max,
-        "n":          catalogo["n"],
+        "w_rem":          w_rem,
+        "z_ref":          z_ref,
+        "f_max":          f_max,
+        "quench_uv":      quench_uv,
+        "n":              catalogo["n"],
     }

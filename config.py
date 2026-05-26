@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 # ── Versión ───────────────────────────────────────────────────────────────────
-SIMULADOR_VERSION   = "0.5.3"
+SIMULADOR_VERSION   = "0.5.7"
 HIPOTESIS_VERSION   = "3.1"
 SIMULADOR_NOMBRE    = "SMCHS"          # Simulador Monte Carlo de Hipótesis Sectorial
 SIMULADOR_NOMBRE_EN = "MCSSH"          # Monte Carlo Simulator for the Sectorial Hypothesis
@@ -65,6 +65,33 @@ MUV_OFFSET  = -17.0          # M_UV en log M★=9
 MUV_LIM_BASE  = -17.0        # magnitud límite a z=8 (AB mag proxy)
 MUV_LIM_SLOPE =  0.25        # umbral sube 0.25 mag por unidad de z
 
+# ── Supresión UV por quenching (v0.5.7) ──────────────────────────────────────
+# Corrige el sesgo de sobredetectabilidad de galaxias masivas quiescentes.
+# Las galaxias con Z_obs > Z_QUENCH_THRESH Y log_m > M_QUENCH_THRESH reciben
+# un desplazamiento positivo en M_UV (más débiles en UV → menos detectables).
+#
+# VALORES PRE-REGISTRADOS: no ajustar para mejorar fit.
+# Ver documentacion/PRE_REGISTRO_PARAMETROS_SMCHS.md.
+#
+# Calibración contra distribución interna del simulador (N=50k, f_rem=5%, t_mu=1.5):
+#   Z_met en escala proxy del simulador: p90≈0.19, p95≈0.22, p99≈0.29, max≈0.48
+#   NOTA: esta escala NO es idéntica a Z/Z☉ absoluta. Es un proxy normalizado.
+#
+#   Umbral elegido (Z>0.18 & logM>9.5):
+#   - Captura ~2.4% de la población total (no invasivo para ΛCDM base)
+#   - Captura ~26% de remanentes con f_rem=5% (discriminativo para cola sectorial)
+#   - Conservador: deja fuera ~74% de remanentes → no suprime toda la señal sectorial
+#
+# DELTA_UV_QUENCH = 2.5 mag: desplazamiento máximo UV. Valor conservador;
+#   galaxias con SFR≈0 pueden ser 3-5 mag más débiles en NUV que star-forming
+#   de igual masa (Salim et al. 2007). La sigmoide lo aplica de forma gradual.
+#
+# Estado: desactivado por defecto (quench_uv=False). Activar con --quench-uv.
+QUENCH_UV_DEFAULT  = False
+Z_QUENCH_THRESH    = 0.18    # proxy Z simulador; umbral de madurez química calibrado
+M_QUENCH_THRESH    = 9.5     # log10(M★/M☉); umbral de masa para quenching
+DELTA_UV_QUENCH    = 2.5     # mag; desplazamiento UV máximo (sigmoide → parcial)
+
 # ── Análisis de sensibilidad ─────────────────────────────────────────────────
 FREMS_SCAN     = [0.0, 0.003, 0.005, 0.01, 0.02, 0.03, 0.05, 0.08]
 HEATMAP_FREMS  = np.linspace(0.0,  0.08, 10)
@@ -82,14 +109,41 @@ DT_TAIL_TAU   = 0.5          # Gyr — umbral de madurez significativa para P(Δ
 # Las masas y metalicidades a z>10 tienen grandes incertidumbres.
 # No usar como ground truth. Consultar papers originales citados en README.
 OBS_OBJECTS = [
+    # ── Serie JADES clásica ──────────────────────────────────────────────────
     {"name": "JADES-GS-z14-0", "z": 14.18, "log_m": 8.7,  "Z_met": 0.55,
      "evidencia": "oxígeno (ALMA)", "nota": "M★ y Z son aproximados/ilustrativos"},
+    {"name": "JADES-GS-z13-0", "z": 13.20, "log_m": 8.3,  "Z_met": 0.30,
+     "evidencia": "espectroscopía NIRSpec", "nota": "récord previo JADES; 325 Myr post-BB"},
     {"name": "MoM-z14",        "z": 14.44, "log_m": 8.5,  "Z_met": 0.45,
      "evidencia": "C/N ratio",     "nota": "candidato/valor aproximado"},
     {"name": "JADES-GS-z7-QU", "z":  7.3,  "log_m": 9.5,  "Z_met": 0.60,
-     "evidencia": "apagada",       "nota": "apagamiento precoz; valores proxy"},
+     "evidencia": "apagada (QU)",  "nota": "cadáver más antiguo conocido; ~700 Myr post-BB"},
     {"name": "GS-9209",        "z":  4.66, "log_m": 11.0, "Z_met": 0.70,
      "evidencia": "masiva-apagada","nota": "referencia tardía comparativa"},
+
+    # ── Red Monsters (galaxias ultramasivas con polvo, RUBIES survey) ────────
+    {"name": "RUBIES-EGS-49318", "z": 4.9, "log_m": 11.2, "Z_met": 0.65,
+     "evidencia": "fotometría JWST NIRCam+MIRI", "nota": "Red Monster; masa ~Vía Láctea actual; muy enriquecida en polvo"},
+    {"name": "RUBIES-EGS-55604", "z": 4.7, "log_m": 11.1, "Z_met": 0.62,
+     "evidencia": "fotometría JWST", "nota": "Red Monster; formación estelar extremadamente eficiente"},
+    {"name": "RUBIES-UDS-48139", "z": 4.6, "log_m": 11.0, "Z_met": 0.60,
+     "evidencia": "fotometría JWST", "nota": "Red Monster; tercer miembro de la triada"},
+
+    # ── Galaxias masivas apagadas (quiescent) extremas ────────────────────────
+    {"name": "RUBIES-UDS-QG-z7", "z": 7.3,  "log_m": 10.2, "Z_met": 0.55,
+     "evidencia": "espectroscopía NIRSpec", "nota": "galaxia masiva apagada más distante conocida; 15k M☉ a 700 Myr post-BB"},
+    {"name": "ZF-UDS-7329",      "z": 3.2,  "log_m": 11.3, "Z_met": 0.72,
+     "evidencia": "espectroscopía JWST", "nota": "estrellas ~11.5 Gyr antiguas; más masiva que Vía Láctea; conflicto con ΛCDM"},
+
+    # ── Fusiones e hipermasivas tempranas ─────────────────────────────────────
+    {"name": "Gz9p3",           "z": 9.3,  "log_m": 10.0, "Z_met": 0.40,
+     "evidencia": "JWST NIRSpec merger", "nota": "fusión masiva; ~510 Myr post-BB; miles de millones de estrellas"},
+    {"name": "Maisie Galaxy",   "z": 11.4, "log_m": 9.0,  "Z_met": 0.35,
+     "evidencia": "espectroscopía confirmada", "nota": "~390 Myr post-BB; masiva y brillante para su época"},
+
+    # ── Cosmic Vine (estructura filamentosa) ──────────────────────────────────
+    {"name": "Cosmic Vine (nodo A)", "z": 7.7, "log_m": 10.8, "Z_met": 0.58,
+     "evidencia": "JWST filamento 20 gal.", "nota": "Cosmic Vine; filamento de 13 Mly; masa total sistema ~260k M☉; nodo quiescent"},
 ]
 
 # ── Estética ─────────────────────────────────────────────────────────────────

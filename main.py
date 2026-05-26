@@ -1,15 +1,25 @@
 """
 main.py — Punto de entrada principal
-Simulador Monte Carlo de Hipótesis Sectorial (SMCHS) v0.5.3
-Hipótesis de Transición Sectorial Cosmológica v3.1
+Simulador Monte Carlo de Hipótesis Sectorial (SMCHS) v0.5.6
+Hipótesis de Transición Sectorial Cosmológica v3.2.1
 
 Uso:
-    python main.py                    # corrida completa
-    python main.py --quick            # N reducido, sin heatmap
-    python main.py --no-heatmap       # sin heatmap
-    python main.py --frem 0.02        # f_rem específico
-    python main.py --zcut 10          # umbral de redshift diferente
-    python main.py --seed 99          # semilla alternativa reproducible
+    python main.py                          # corrida completa
+    python main.py --quick                  # N reducido, sin heatmap
+    python main.py --no-heatmap             # sin heatmap
+    python main.py --frem 0.02              # f_rem específico
+    python main.py --zcut 10               # umbral de redshift diferente
+    python main.py --seed 99               # semilla alternativa reproducible
+    python main.py --remnant-mode metric   # dilución métrica activa
+    python main.py --remnant-mode geometric  # modo experimental geométrico
+    python main.py --no-archive            # no guardar ZIP en logs/
+
+Changelog v0.5.6:
+    - Archivo rotativo de corridas en logs/ (ZIP con timestamp, máx 20)
+    - --remnant-mode flat|metric|geometric (Opción C)
+    - Paralelismo adaptativo para scan y heatmap (ThreadPoolExecutor)
+    - Objetos observacionales ampliados: Red Monsters, RUBIES, Cosmic Vine
+    - Pre-registro de parámetros en documentacion/PRE_REGISTRO_PARAMETROS_SMCHS.md
 """
 
 from __future__ import annotations
@@ -30,6 +40,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import config as cfg
 from core.poblacion import inicializar_catalogo, construir_poblacion
+from core.geometric_remnants import construir_poblacion_geometric
+from core.run_archive import archivar_corrida
+from core.parallel import scan_frems_parallel, heatmap_parallel
 from analysis.estadistica import resumen_consola, scan_frems, heatmap_grid
 from analysis.exportar import (
     exportar_metricas_scan, exportar_muestra_poblacion, exportar_heatmap
@@ -80,6 +93,38 @@ def parse_args() -> argparse.Namespace:
                    help="límite superior de f_rem_eff(z)")
     p.add_argument("--external-baseline", type=str, default=None,
                    help="CSV/FITS externo JADES/TNG/SIMBA para superposición y D_tail")
+    # ── v0.5.6 ────────────────────────────────────────────────────────────────
+    p.add_argument("--remnant-mode", type=str, default="flat",
+                   choices=["flat", "metric", "geometric"],
+                   help=(
+                       "Modo de remanencia: "
+                       "flat=f_rem fijo (base, default), "
+                       "metric=dilución por expansión, "
+                       "geometric=fluctuación latente (experimental)"
+                   ))
+    p.add_argument("--no-archive", action="store_true",
+                   help="No guardar ZIP de outputs en logs/ al terminar")
+    p.add_argument("--workers", type=int, default=None,
+                   help="Máximo de threads para scan/heatmap (None=automático)")
+    p.add_argument("--geo-psi-c", type=float, default=0.5,
+                   help="Umbral sigmoide modo geometric (default: 0.5)")
+    p.add_argument("--geo-s-psi", type=float, default=0.3,
+                   help="Suavidad sigmoide modo geometric (default: 0.3)")
+    # ── Quenching UV (v0.5.7) ─────────────────────────────────────────────────
+    p.add_argument("--quench-uv", action="store_true",
+                   help=(
+                       "Activar supresión UV por quenching. Galaxias con "
+                       "Z_obs > Z_QUENCH_THRESH y log_m > M_QUENCH_THRESH "
+                       "reciben M_UV más débil → menos detectables. "
+                       "Filtro conservador: puede reducir la señal sectorial. "
+                       "Desactivado por defecto para retrocompatibilidad."
+                   ))
+    p.add_argument("--z-quench-thresh", type=float, default=cfg.Z_QUENCH_THRESH,
+                   help=f"Umbral metalicidad para quenching UV (default: {cfg.Z_QUENCH_THRESH})")
+    p.add_argument("--m-quench-thresh", type=float, default=cfg.M_QUENCH_THRESH,
+                   help=f"Umbral masa log10 para quenching UV (default: {cfg.M_QUENCH_THRESH})")
+    p.add_argument("--delta-uv-quench", type=float, default=cfg.DELTA_UV_QUENCH,
+                   help=f"Desplazamiento UV máximo en mag (default: {cfg.DELTA_UV_QUENCH})")
     return p.parse_args()
 
 
@@ -103,8 +148,17 @@ def banner(args: argparse.Namespace) -> None:
     logger.info("SMCHS / MCSSH v%s — Hipótesis v%s", cfg.SIMULADOR_VERSION, cfg.HIPOTESIS_VERSION)
     logger.info("N=%s | f_rem=%.4f | tprev=%.3f Gyr | z_cut=%.2f | seed=%s | out=%s",
                 f"{args.n:,}", args.frem, args.tprev, args.zcut, args.seed, args.out)
-    if args.metric_dilution:
-        logger.info("Dilución métrica activa: w_rem=%.3f | z_ref=%.2f | fmax=%.3f", args.w_rem, args.z_ref, args.fmax)
+    logger.info("remnant-mode=%s | workers=%s | archive=%s | quench-uv=%s",
+                args.remnant_mode, args.workers or "auto",
+                "no" if args.no_archive else "sí",
+                "ON" if args.quench_uv else "off")
+    if args.remnant_mode == "metric" or args.metric_dilution:
+        logger.info("Dilución métrica: w_rem=%.3f | z_ref=%.2f | fmax=%.3f", args.w_rem, args.z_ref, args.fmax)
+    if args.remnant_mode == "geometric":
+        logger.info("Modo geométrico: psi_c=%.2f | s_psi=%.2f", args.geo_psi_c, args.geo_s_psi)
+    if args.quench_uv:
+        logger.info("Quench UV: Z_thresh=%.2f | M_thresh=%.1f | ΔM_UV_max=%.1f mag",
+                    args.z_quench_thresh, args.m_quench_thresh, args.delta_uv_quench)
 
 
 def safe_step(label: str, func: Callable, *args, fail_fast: bool = False, **kwargs):
@@ -121,13 +175,55 @@ def safe_step(label: str, func: Callable, *args, fail_fast: bool = False, **kwar
         return None
 
 
+def _construir_sect(catalogo, args, f_rem_override=None):
+    """
+    Construye una población según --remnant-mode y --quench-uv.
+    f_rem_override permite construir con fracciones alternativas (½×, 2×).
+    """
+    fr   = f_rem_override if f_rem_override is not None else args.frem
+    mode = args.remnant_mode
+    if args.metric_dilution and mode == "flat":
+        mode = "metric"
+
+    # Parámetros de quenching comunes a todos los modos
+    quench_kwargs = dict(
+        quench_uv       = args.quench_uv,
+        z_quench_thresh = args.z_quench_thresh,
+        m_quench_thresh = args.m_quench_thresh,
+        delta_uv_quench = args.delta_uv_quench,
+    )
+
+    if mode == "geometric":
+        return construir_poblacion_geometric(
+            catalogo, f0=fr, t_mu=args.tprev,
+            psi_c=args.geo_psi_c, s_psi=args.geo_s_psi,
+            z_ref=args.z_ref, w_rem=args.w_rem, f_max=args.fmax,
+            **quench_kwargs,
+        )
+    elif mode == "metric":
+        return construir_poblacion(
+            catalogo, f_rem=fr, t_mu=args.tprev,
+            metric_dilution=True, w_rem=args.w_rem,
+            z_ref=args.z_ref, f_max=args.fmax,
+            **quench_kwargs,
+        )
+    else:  # flat
+        return construir_poblacion(
+            catalogo, f_rem=fr, t_mu=args.tprev,
+            **quench_kwargs,
+        )
+
+
 def main() -> int:
     args = parse_args()
     if args.quick:
         args.n = min(args.n, 30_000)
         args.no_heatmap = True
 
-    # Actualiza cfg.SEED para semillas estables derivadas dentro de construir_poblacion().
+    # Retrocompatibilidad: --metric-dilution sin --remnant-mode
+    if args.metric_dilution and args.remnant_mode == "flat":
+        args.remnant_mode = "metric"
+
     cfg.SEED = args.seed
 
     setup_logging(args.out)
@@ -142,11 +238,11 @@ def main() -> int:
                     float(catalogo["z"].min()), float(catalogo["z"].max()),
                     float(catalogo["t_lcdm"].min()), float(catalogo["t_lcdm"].max()))
 
-        logger.info("[2/6] Construyendo poblaciones pareadas")
-        pop_lcdm  = construir_poblacion(catalogo, f_rem=0.0,         t_mu=args.tprev)
-        pop_sect  = construir_poblacion(catalogo, f_rem=args.frem,   t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
-        pop_half  = construir_poblacion(catalogo, f_rem=args.frem/2, t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
-        pop_doble = construir_poblacion(catalogo, f_rem=args.frem*2, t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
+        logger.info("[2/6] Construyendo poblaciones pareadas (mode=%s)", args.remnant_mode)
+        pop_lcdm  = construir_poblacion(catalogo, f_rem=0.0, t_mu=args.tprev)
+        pop_sect  = _construir_sect(catalogo, args)
+        pop_half  = _construir_sect(catalogo, args, f_rem_override=args.frem / 2)
+        pop_doble = _construir_sect(catalogo, args, f_rem_override=args.frem * 2)
 
         n_vis = int(pop_lcdm["visible"].sum())
         n_alt = int((pop_lcdm["visible"] & (pop_lcdm["z"] > args.zcut)).sum())
@@ -155,8 +251,14 @@ def main() -> int:
         logger.info("[3/6] Análisis estadístico")
         resumen_consola(pop_lcdm, pop_sect, z_cut=args.zcut)
 
-        logger.info("[4/6] Escaneando sensibilidad en f_rem")
-        resultados_scan = scan_frems(catalogo, t_mu=args.tprev, z_cut=args.zcut, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax)
+        logger.info("[4/6] Escaneando sensibilidad en f_rem (paralelo)")
+        use_metric = (args.remnant_mode == "metric" or args.metric_dilution)
+        resultados_scan = scan_frems_parallel(
+            catalogo, t_mu=args.tprev, z_cut=args.zcut,
+            metric_dilution=use_metric,
+            w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax,
+            max_workers=args.workers,
+        )
 
         logger.info("[5/6] Generando figuras")
         pops_multi   = [pop_lcdm, pop_half, pop_sect, pop_doble]
@@ -181,7 +283,9 @@ def main() -> int:
             safe_step(label, func, *fargs, fail_fast=args.fail_fast)
 
         if not args.no_heatmap:
-            hm = safe_step("heatmap_grid", heatmap_grid, z_cut=args.zcut, fail_fast=args.fail_fast)
+            hm = safe_step("heatmap_parallel", heatmap_parallel,
+                           z_cut=args.zcut, max_workers=args.workers,
+                           fail_fast=args.fail_fast)
             if hm is not None:
                 frems_hm, tprevs_hm, ratio_grid = hm
                 safe_step("fig7_heatmap", fig7_heatmap, frems_hm, tprevs_hm, ratio_grid, args.out, fail_fast=args.fail_fast)
@@ -190,7 +294,7 @@ def main() -> int:
             logger.info("Heatmap omitido")
 
         frems_snr = [0.005, args.frem, args.frem * 2]
-        pops_snr = [construir_poblacion(catalogo, f_rem=fr, t_mu=args.tprev, metric_dilution=args.metric_dilution, w_rem=args.w_rem, z_ref=args.z_ref, f_max=args.fmax) for fr in frems_snr]
+        pops_snr  = [_construir_sect(catalogo, args, f_rem_override=fr) for fr in frems_snr]
         safe_step("fig9_signal_vs_observed", fig9_signal_vs_observed, pop_lcdm, pop_sect, args.out, fail_fast=args.fail_fast)
         safe_step("fig10_distribucion_dt_signal", fig10_distribucion_dt_signal, pop_lcdm, pops_snr, frems_snr, args.out, fail_fast=args.fail_fast)
         safe_step("fig11_snr_scan", fig11_snr_scan, resultados_scan, args.out, fail_fast=args.fail_fast)
@@ -222,6 +326,19 @@ def main() -> int:
 
         elapsed = time.time() - t0
         logger.info("Completado en %.1fs | salida=%s", elapsed, Path(args.out).resolve())
+
+        # ── Archivo rotativo en logs/ ─────────────────────────────────────────
+        if not args.no_archive:
+            args_dict = vars(args)
+            zip_path = archivar_corrida(
+                out_dir=args.out,
+                log_dir=cfg.LOG_DIR,
+                args_dict={k: v for k, v in args_dict.items() if not callable(v)},
+                elapsed=elapsed,
+            )
+            if zip_path:
+                logger.info("Corrida archivada: %s", zip_path.name)
+
         return 0
     except Exception:
         logger.exception("Ejecución abortada")
