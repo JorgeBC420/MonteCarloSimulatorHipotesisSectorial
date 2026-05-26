@@ -1,0 +1,7 @@
+﻿SMCHS seed batch run
+N=400000
+seed=3
+started=05/25/2026 18:03:43
+ended=05/25/2026 18:03:56
+elapsed_seconds=13.07
+command=python main.py --n 400000 --seed 3 --no-heatmap
