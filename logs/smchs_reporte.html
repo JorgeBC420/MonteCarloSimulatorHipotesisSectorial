@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMCHS — Análisis de corridas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .header { background: #1e293b; border-bottom: 1px solid #334155; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #f1f5f9; letter-spacing: -0.3px; }
+  .header .sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .badge-gen { background: #1e3a5f; color: #60a5fa; border-radius: 6px; padding: 4px 10px; font-size: 11px; white-space: nowrap; }
+  .main { padding: 24px 32px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .metric { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px 16px; }
+  .metric .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .metric .value { font-size: 22px; font-weight: 600; color: #f1f5f9; }
+  .metric .value.green { color: #34d399; }
+  .metric .value.blue  { color: #60a5fa; }
+  .metric .value.orange { color: #f59e0b; }
+  .section-title { font-size: 14px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 10px 0; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 18px; margin-bottom: 20px; overflow-x: auto; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .controls select, .controls input { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+  .controls label { font-size: 12px; color: #64748b; }
+  .btn { background: #1e3a5f; color: #60a5fa; border: 1px solid #1e40af; border-radius: 6px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+  .btn:hover { background: #1e40af; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: #0f172a; border-bottom: 1px solid #334155; }
+  th { padding: 10px 6px; text-align: left; font-size: 11px; font-weight: 500; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+  th.r { text-align: right; }
+  th.c { text-align: center; }
+  tbody tr { border-bottom: 1px solid #0f172a; transition: background 0.1s; }
+  tbody tr:hover { background: #263447; }
+  tbody tr.warn-row { border-left: 3px solid #f59e0b; }
+  .warn-dot { display: inline-block; width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; margin-right: 4px; }
+  .note { margin-top: 20px; font-size: 11px; color: #475569; border-top: 1px solid #1e293b; padding-top: 14px; }
+  #no-results { display: none; color: #475569; text-align: center; padding: 32px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header h1">SMCHS — Análisis de corridas archivadas</div>
+    <div class="sub">Directorio: C:\Users\bjorg\OneDrive\Desktop\smchs_v0.5.2\logs &nbsp;·&nbsp; Generado: 2026-05-28 04:06 UTC</div>
+  </div>
+  <span class="badge-gen">20 corridas</span>
+</div>
+
+<div class="main">
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">Corridas</div>
+      <div class="value blue">20</div>
+    </div>
+    <div class="metric">
+      <div class="label">SNR mín</div>
+      <div class="value green">2.045</div>
+    </div>
+    <div class="metric">
+      <div class="label">SNR máx</div>
+      <div class="value green">3.511</div>
+    </div>
+    <div class="metric">
+      <div class="label">SNR ≥ 2</div>
+      <div class="value green">20 / 20</div>
+    </div>
+    <div class="metric">
+      <div class="label">SNR ≥ 3</div>
+      <div class="value green">3 / 20</div>
+    </div>
+    <div class="metric">
+      <div class="label">Con warnings</div>
+      <div class="value orange">10</div>
+    </div>
+  </div>
+
+  <!-- Resumen por escenario -->
+  <div class="card">
+    <div class="section-title">Resumen por escenario</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Modo + Quench</th>
+          <th class="r">Runs</th>
+          <th class="r">ΔQ99 &gt; 0</th>
+          <th class="r">SNR ≥ 2</th>
+          <th class="r">SNR ≥ 3</th>
+          <th class="r">R medio</th>
+          <th class="r">Exceso medio</th>
+          <th class="r">ΔQ99 medio</th>
+          <th class="r">SNR medio</th>
+          <th class="r">Warnings</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:right">7</td>
+          <td style="padding:8px 6px;text-align:right">7/7</td>
+          <td style="padding:8px 6px;text-align:right">7/7</td>
+          <td style="padding:8px 6px;text-align:right">0/7</td>
+          <td style="padding:8px 6px;text-align:right">1.112×</td>
+          <td style="padding:8px 6px;text-align:right">11.2%</td>
+          <td style="padding:8px 6px;text-align:right">0.8452 Gyr</td>
+          <td style="padding:8px 6px;text-align:right">2.457</td>
+          <td style="padding:8px 6px;text-align:right"><span style="color:#f59e0b">5 ⚠</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:right">6</td>
+          <td style="padding:8px 6px;text-align:right">6/6</td>
+          <td style="padding:8px 6px;text-align:right">6/6</td>
+          <td style="padding:8px 6px;text-align:right">3/6</td>
+          <td style="padding:8px 6px;text-align:right">1.121×</td>
+          <td style="padding:8px 6px;text-align:right">12.2%</td>
+          <td style="padding:8px 6px;text-align:right">1.0973 Gyr</td>
+          <td style="padding:8px 6px;text-align:right">2.966</td>
+          <td style="padding:8px 6px;text-align:right"><span style="color:#34d399">0</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:right">7</td>
+          <td style="padding:8px 6px;text-align:right">7/7</td>
+          <td style="padding:8px 6px;text-align:right">7/7</td>
+          <td style="padding:8px 6px;text-align:right">0/7</td>
+          <td style="padding:8px 6px;text-align:right">1.161×</td>
+          <td style="padding:8px 6px;text-align:right">16.1%</td>
+          <td style="padding:8px 6px;text-align:right">0.9147 Gyr</td>
+          <td style="padding:8px 6px;text-align:right">2.663</td>
+          <td style="padding:8px 6px;text-align:right"><span style="color:#f59e0b">5 ⚠</span></td>
+        </tr></tbody>
+    </table>
+  </div>
+
+  <!-- Controles de filtrado -->
+  <div class="controls">
+    <label>Modo:</label>
+    <select id="filter-mode">
+      <option value="">todos</option>
+      <option value="flat">flat</option>
+      <option value="metric">metric</option>
+      <option value="geometric">geometric</option>
+    </select>
+    <label>Quench:</label>
+    <select id="filter-quench">
+      <option value="">todos</option>
+      <option value="true">ON</option>
+      <option value="false">off</option>
+    </select>
+    <label>Warnings:</label>
+    <select id="filter-warn">
+      <option value="">todos</option>
+      <option value="true">solo con ⚠</option>
+      <option value="false">sin warnings</option>
+    </select>
+    <label>Ordenar por:</label>
+    <select id="sort-by">
+      <option value="ts">fecha</option>
+      <option value="snr">SNR ↓</option>
+      <option value="R">ratio R ↓</option>
+      <option value="seed">seed</option>
+    </select>
+    <button class="btn" onclick="exportarCSV()">⬇ CSV</button>
+    <button class="btn" onclick="resetFiltros()">↺ Reset</button>
+  </div>
+
+  <!-- Tabla de detalle -->
+  <div class="card">
+    <div class="section-title">Detalle de corridas</div>
+    <div class="table-wrap">
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Seed</th>
+            <th>Modo</th>
+            <th class="c">Scan Q</th>
+            <th class="r">N</th>
+            <th class="r">R</th>
+            <th class="r">Exceso</th>
+            <th class="r">SNR_tail</th>
+            <th class="r">ΔQ99</th>
+            <th class="r">Masivas B/S</th>
+            <th class="r">Tiempo</th>
+            <th>Ver.</th>
+            <th>Fuente</th>
+            <th>Warnings</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:28:58 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">—</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">120,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.096×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+9.6%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.899 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.034 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">10 / 11</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.0s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T022903Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:29:08 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">—</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">120,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.198×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+19.8%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.522 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.897 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">10 / 12</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.2s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T022914Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:40:04 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">—</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.162×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+16.2%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#34d399">3.116 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.149 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">44 / 52</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">9.2s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T024013Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:40:19 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">—</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.182×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+18.2%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.337 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.831 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">44 / 52</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">9.1s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T024028Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:40:33 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">—</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.285×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+28.5%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.690 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.955 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">44 / 57</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">8.4s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T024042Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:59:12 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">off</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.162×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+16.2%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#34d399">3.116 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.149 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">44 / 52</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.9s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T025919Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:59:24 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.170×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+17.0%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.416 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.831 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">44 / 52</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">8.7s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T025933Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 20:59:39 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.273×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+27.3%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.780 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.955 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">44 / 57</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">12.7s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T025951Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:00:01 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">101</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">off</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.149×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+14.9%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#34d399">3.511 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.293 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">51 / 60</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">7.7s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030009Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:00:14 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">101</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.141×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+14.1%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.988 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.994 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">51 / 59</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">7.8s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030022Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:00:27 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">101</td>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.076×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+7.6%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.867 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.947 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">51 / 56</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">7.2s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030034Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:00:44 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">202</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">off</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.046×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+4.6%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.465 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.928 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">57 / 61</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">7.2s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030051Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:00:59 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">202</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.056×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+5.6%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.045 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.700 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">57 / 61</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">7.9s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030107Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:01:11 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">202</td>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.050×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+5.0%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.244 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.769 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">57 / 61</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.9s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030118Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:01:27 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">303</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">off</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.085×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+8.5%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.811 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.017 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">46 / 51</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">8.3s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030135Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:01:40 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">303</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.051×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+5.1%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.263 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.756 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">46 / 49</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.8s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030147Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:01:52 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">303</td>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.072×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+7.2%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.755 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.923 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">46 / 50</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.9s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030159Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:02:20 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">404</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">off</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.125×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+12.5%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.777 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.048 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">41 / 47</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.9s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030227Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:02:32 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">404</td>
+          <td style="padding:8px 6px"><span style="background:#0c2a3f;color:#60a5fa;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.086×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+8.6%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.253 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.772 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">41 / 45</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.9s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030239Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-27 21:03:59 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">404</td>
+          <td style="padding:8px 6px"><span style="background:#3b2800;color:#fbbf24;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:center;font-size:12px">ON</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">400,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.176×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">+17.6%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#60a5fa">2.785 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.956 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">41 / 49</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">7.1s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">v0.5.7</td>
+          <td style="padding:8px 6px;font-size:11px;color:#64748b">smchs_run_20260528T030407Z.zip</td>
+          <td style="padding:8px 6px;font-size:11px"><span style="color:#f59e0b;font-size:11px">⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata</span></td>
+        </tr>
+        </tbody>
+      </table>
+      <div id="no-results">No hay corridas que coincidan con los filtros.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    SNR_tail ★ = ≥ 2.0 (robusto) &nbsp;·&nbsp;
+    R = ratio P(anomalía) sectorial / base &nbsp;·&nbsp;
+    ΔQ99 = diferencia de percentil 99 de dt_signal (Gyr) &nbsp;·&nbsp;
+    Scan Q = quench_uv detectado en el scan paralelo (para validar hotfix) &nbsp;·&nbsp;
+    ⚠ = mismatch entre run y scan, verificar metadata
+  </div>
+</div>
+
+<script>
+const DATOS = [{"ts": "2026-05-27 20:28:58 UTC", "seed": "42", "mode": "flat", "quench": true, "scan_quench": "", "n": 120000, "R": 1.096, "exceso": 9.6, "snr": 2.899, "dq99": 1.0335, "elapsed": 6.0, "ver": "v0.5.7", "zip": "smchs_run_20260528T022903Z.zip", "warnings": "", "mas_base": 10, "mas_sect": 11}, {"ts": "2026-05-27 20:29:08 UTC", "seed": "42", "mode": "metric", "quench": true, "scan_quench": "", "n": 120000, "R": 1.198, "exceso": 19.8, "snr": 2.522, "dq99": 0.8968, "elapsed": 6.2, "ver": "v0.5.7", "zip": "smchs_run_20260528T022914Z.zip", "warnings": "", "mas_base": 10, "mas_sect": 12}, {"ts": "2026-05-27 20:40:04 UTC", "seed": "42", "mode": "flat", "quench": false, "scan_quench": "", "n": 400000, "R": 1.162, "exceso": 16.2, "snr": 3.116, "dq99": 1.1487, "elapsed": 9.2, "ver": "v0.5.7", "zip": "smchs_run_20260528T024013Z.zip", "warnings": "", "mas_base": 44, "mas_sect": 52}, {"ts": "2026-05-27 20:40:19 UTC", "seed": "42", "mode": "flat", "quench": true, "scan_quench": "", "n": 400000, "R": 1.182, "exceso": 18.2, "snr": 2.337, "dq99": 0.8308, "elapsed": 9.1, "ver": "v0.5.7", "zip": "smchs_run_20260528T024028Z.zip", "warnings": "", "mas_base": 44, "mas_sect": 52}, {"ts": "2026-05-27 20:40:33 UTC", "seed": "42", "mode": "metric", "quench": true, "scan_quench": "", "n": 400000, "R": 1.285, "exceso": 28.5, "snr": 2.69, "dq99": 0.9551, "elapsed": 8.4, "ver": "v0.5.7", "zip": "smchs_run_20260528T024042Z.zip", "warnings": "", "mas_base": 44, "mas_sect": 57}, {"ts": "2026-05-27 20:59:12 UTC", "seed": "42", "mode": "flat", "quench": false, "scan_quench": "off", "n": 400000, "R": 1.162, "exceso": 16.2, "snr": 3.116, "dq99": 1.1487, "elapsed": 6.9, "ver": "v0.5.7", "zip": "smchs_run_20260528T025919Z.zip", "warnings": "", "mas_base": 44, "mas_sect": 52}, {"ts": "2026-05-27 20:59:24 UTC", "seed": "42", "mode": "flat", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.17, "exceso": 17.0, "snr": 2.416, "dq99": 0.8308, "elapsed": 8.7, "ver": "v0.5.7", "zip": "smchs_run_20260528T025933Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 44, "mas_sect": 52}, {"ts": "2026-05-27 20:59:39 UTC", "seed": "42", "mode": "metric", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.273, "exceso": 27.3, "snr": 2.78, "dq99": 0.9551, "elapsed": 12.7, "ver": "v0.5.7", "zip": "smchs_run_20260528T025951Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 44, "mas_sect": 57}, {"ts": "2026-05-27 21:00:01 UTC", "seed": "101", "mode": "flat", "quench": false, "scan_quench": "off", "n": 400000, "R": 1.149, "exceso": 14.9, "snr": 3.511, "dq99": 1.2933, "elapsed": 7.7, "ver": "v0.5.7", "zip": "smchs_run_20260528T030009Z.zip", "warnings": "", "mas_base": 51, "mas_sect": 60}, {"ts": "2026-05-27 21:00:14 UTC", "seed": "101", "mode": "flat", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.141, "exceso": 14.1, "snr": 2.988, "dq99": 0.9943, "elapsed": 7.8, "ver": "v0.5.7", "zip": "smchs_run_20260528T030022Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 51, "mas_sect": 59}, {"ts": "2026-05-27 21:00:27 UTC", "seed": "101", "mode": "metric", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.076, "exceso": 7.6, "snr": 2.867, "dq99": 0.9473, "elapsed": 7.2, "ver": "v0.5.7", "zip": "smchs_run_20260528T030034Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 51, "mas_sect": 56}, {"ts": "2026-05-27 21:00:44 UTC", "seed": "202", "mode": "flat", "quench": false, "scan_quench": "off", "n": 400000, "R": 1.046, "exceso": 4.6, "snr": 2.465, "dq99": 0.9282, "elapsed": 7.2, "ver": "v0.5.7", "zip": "smchs_run_20260528T030051Z.zip", "warnings": "", "mas_base": 57, "mas_sect": 61}, {"ts": "2026-05-27 21:00:59 UTC", "seed": "202", "mode": "flat", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.056, "exceso": 5.6, "snr": 2.045, "dq99": 0.6995, "elapsed": 7.9, "ver": "v0.5.7", "zip": "smchs_run_20260528T030107Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 57, "mas_sect": 61}, {"ts": "2026-05-27 21:01:11 UTC", "seed": "202", "mode": "metric", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.05, "exceso": 5.0, "snr": 2.244, "dq99": 0.7694, "elapsed": 6.9, "ver": "v0.5.7", "zip": "smchs_run_20260528T030118Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 57, "mas_sect": 61}, {"ts": "2026-05-27 21:01:27 UTC", "seed": "303", "mode": "flat", "quench": false, "scan_quench": "off", "n": 400000, "R": 1.085, "exceso": 8.5, "snr": 2.811, "dq99": 1.017, "elapsed": 8.3, "ver": "v0.5.7", "zip": "smchs_run_20260528T030135Z.zip", "warnings": "", "mas_base": 46, "mas_sect": 51}, {"ts": "2026-05-27 21:01:40 UTC", "seed": "303", "mode": "flat", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.051, "exceso": 5.1, "snr": 2.263, "dq99": 0.756, "elapsed": 6.8, "ver": "v0.5.7", "zip": "smchs_run_20260528T030147Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 46, "mas_sect": 49}, {"ts": "2026-05-27 21:01:52 UTC", "seed": "303", "mode": "metric", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.072, "exceso": 7.2, "snr": 2.755, "dq99": 0.9232, "elapsed": 6.9, "ver": "v0.5.7", "zip": "smchs_run_20260528T030159Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 46, "mas_sect": 50}, {"ts": "2026-05-27 21:02:20 UTC", "seed": "404", "mode": "flat", "quench": false, "scan_quench": "off", "n": 400000, "R": 1.125, "exceso": 12.5, "snr": 2.777, "dq99": 1.0478, "elapsed": 6.9, "ver": "v0.5.7", "zip": "smchs_run_20260528T030227Z.zip", "warnings": "", "mas_base": 41, "mas_sect": 47}, {"ts": "2026-05-27 21:02:32 UTC", "seed": "404", "mode": "flat", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.086, "exceso": 8.6, "snr": 2.253, "dq99": 0.7717, "elapsed": 6.9, "ver": "v0.5.7", "zip": "smchs_run_20260528T030239Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 41, "mas_sect": 45}, {"ts": "2026-05-27 21:03:59 UTC", "seed": "404", "mode": "metric", "quench": true, "scan_quench": "ON", "n": 400000, "R": 1.176, "exceso": 17.6, "snr": 2.785, "dq99": 0.9559, "elapsed": 7.1, "ver": "v0.5.7", "zip": "smchs_run_20260528T030407Z.zip", "warnings": "⚠ scan muestra quench_uv=ON pero versión dice v0.5.7 — verificar si hotfix está reflejado en metadata", "mas_base": 41, "mas_sect": 49}];
+
+function snrColor(v) {
+  if (!v) return '#888';
+  if (v >= 3.0) return '#34d399';
+  if (v >= 2.0) return '#60a5fa';
+  if (v >= 1.0) return '#f59e0b';
+  return '#f87171';
+}
+
+function modeBadge(mode, quench) {
+  const q = quench ? '+quench' : '';
+  const colors = {
+    flat:      ['#0c2a3f','#60a5fa'],
+    metric:    ['#3b2800','#fbbf24'],
+    geometric: ['#2e1065','#c084fc'],
+  };
+  const [bg, fg] = colors[mode] || ['#1e293b','#94a3b8'];
+  return `<span style="background:${bg};color:${fg};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">${mode}${q}</span>`;
+}
+
+function fmt(v, d=3, s='') {
+  return v != null ? Number(v).toFixed(d) + s : '—';
+}
+
+function renderTabla(datos) {
+  const tbody = document.getElementById('tbody');
+  const noRes = document.getElementById('no-results');
+  if (!datos.length) {
+    tbody.innerHTML = '';
+    noRes.style.display = 'block';
+    return;
+  }
+  noRes.style.display = 'none';
+  tbody.innerHTML = datos.map(c => {
+    const warnHtml = c.warnings
+      ? `<span style="color:#f59e0b;font-size:11px"><span class="warn-dot"></span>${c.warnings}</span>`
+      : '';
+    const rowClass = c.warnings ? 'warn-row' : '';
+    return `
+    <tr class="${rowClass}">
+      <td style="padding:8px 6px;font-size:12px;color:#64748b">${c.ts}</td>
+      <td style="padding:8px 6px;font-weight:500;font-size:13px">${c.seed || '—'}</td>
+      <td style="padding:8px 6px">${modeBadge(c.mode, c.quench)}</td>
+      <td style="padding:8px 6px;text-align:center;font-size:12px;color:#94a3b8">${c.scan_quench || '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px">${c.n != null ? c.n.toLocaleString() : '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px">${fmt(c.R, 3)}×</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">${c.exceso != null ? (c.exceso > 0 ? '+' : '') + c.exceso.toFixed(1) + '%' : '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:${snrColor(c.snr)}">${c.snr != null ? c.snr.toFixed(3) + (c.snr >= 2 ? ' ★' : '') : '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px">${fmt(c.dq99, 3)} Gyr</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px">${c.mas_base != null ? c.mas_base.toLocaleString() : '—'} / ${c.mas_sect != null ? c.mas_sect.toLocaleString() : '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">${c.elapsed != null ? c.elapsed + 's' : '—'}</td>
+      <td style="padding:8px 6px;font-size:11px;color:#94a3b8">${c.ver}</td>
+      <td style="padding:8px 6px;font-size:11px;color:#64748b">${c.zip}</td>
+      <td style="padding:8px 6px">${warnHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarYOrdenar() {
+  const mode   = document.getElementById('filter-mode').value;
+  const quench = document.getElementById('filter-quench').value;
+  const warn   = document.getElementById('filter-warn').value;
+  const sortBy = document.getElementById('sort-by').value;
+
+  let datos = [...DATOS];
+  if (mode)         datos = datos.filter(c => c.mode === mode);
+  if (quench !== '') datos = datos.filter(c => String(c.quench) === quench);
+  if (warn === 'true')  datos = datos.filter(c => c.warnings);
+  if (warn === 'false') datos = datos.filter(c => !c.warnings);
+
+  datos.sort((a, b) => {
+    if (sortBy === 'snr')  return (b.snr  || 0) - (a.snr  || 0);
+    if (sortBy === 'R')    return (b.R    || 0) - (a.R    || 0);
+    if (sortBy === 'seed') return (a.seed || '') < (b.seed || '') ? -1 : 1;
+    return a.ts < b.ts ? -1 : 1;
+  });
+  renderTabla(datos);
+}
+
+['filter-mode','filter-quench','filter-warn','sort-by'].forEach(id =>
+  document.getElementById(id).addEventListener('change', filtrarYOrdenar)
+);
+
+function resetFiltros() {
+  ['filter-mode','filter-quench','filter-warn'].forEach(id =>
+    document.getElementById(id).value = '');
+  document.getElementById('sort-by').value = 'ts';
+  filtrarYOrdenar();
+}
+
+function exportarCSV() {
+  const campos  = ['ts','seed','mode','quench','scan_quench','n','R','exceso','snr','dq99','mas_base','mas_sect','elapsed','ver','zip','warnings'];
+  const headers = 'timestamp,seed,modo,quench_uv,scan_quench_uv,N,R,exceso_pct,SNR_tail,delta_Q99_Gyr,n_masivas_base,n_masivas_sect,elapsed_s,version,zip_name,warnings';
+  const filas = DATOS.map(c => campos.map(k => {
+    const v = c[k];
+    if (v == null) return '';
+    const s = String(v);
+    return s.includes(',') ? `"${s}"` : s;
+  }).join(','));
+  const blob = new Blob([headers + '\n' + filas.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'smchs_corridas_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+</script>
+</body>
+</html>

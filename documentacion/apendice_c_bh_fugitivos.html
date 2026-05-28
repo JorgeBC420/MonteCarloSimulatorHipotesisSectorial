@@ -1,0 +1,169 @@
+
+<style>
+  .apc { max-width: 680px; padding: 2rem 0 1rem; font-size: 15px; line-height: 1.75; color: var(--color-text-primary); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); color: var(--color-text-secondary); letter-spacing: 0.04em; margin-bottom: 0.4rem; }
+  h2.title { font-size: 20px; font-weight: 500; margin: 0.2rem 0 0.5rem; color: var(--color-text-primary); }
+  .subtitle { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 2rem; }
+  .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--color-text-tertiary); text-transform: uppercase; margin: 2rem 0 0.5rem; }
+  p { margin: 0 0 1rem; }
+  .eq-block { background: var(--color-background-secondary); border-left: 3px solid var(--color-border-info); border-radius: 0; padding: 1rem 1.25rem; margin: 1rem 0 1.25rem; font-family: var(--font-mono); font-size: 14px; color: var(--color-text-primary); line-height: 1.8; }
+  .eq-label { font-size: 12px; color: var(--color-text-tertiary); font-family: var(--font-sans); margin-top: 0.4rem; }
+  .step-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 1rem 0 1.5rem; }
+  .step-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; }
+  .step-num { font-size: 11px; font-weight: 500; color: var(--color-text-info); margin-bottom: 6px; }
+  .step-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--color-text-primary); }
+  .step-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+  .obs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 1rem 0 1.5rem; }
+  .obs-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--color-text-secondary); padding: 8px 10px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); }
+  .obs-item i { color: var(--color-text-tertiary); flex-shrink: 0; margin-top: 2px; }
+  .diagram { width: 100%; margin: 1.5rem 0; }
+  .caveat { border: 0.5px solid var(--color-border-warning); background: var(--color-background-warning); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; font-size: 13px; color: var(--color-text-warning); margin: 1rem 0 1.5rem; }
+  .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 2rem 0; }
+  .footnote { font-size: 12px; color: var(--color-text-tertiary); }
+</style>
+
+<div class="apc">
+  <span class="tag">Apéndice C</span>
+  <h2 class="title">Agujeros negros fugitivos como sondas dinámicas de masa no visible</h2>
+  <p class="subtitle">Hipótesis de Transición Sectorial Cosmológica v3.1 — J. E. Bravo Chaves, 2026</p>
+
+  <div class="section-label">Motivación</div>
+  <p>Los agujeros negros fugitivos —expulsados de sus galaxias anfitrionas por interacciones de sistemas triples o fusiones galácticas— no son meramente anomalías dinámicas. Su trayectoria posteyección, su velocidad y la estela de formación estelar que arrastran constituyen una sonda gravitacional macroscópica: un objeto de masa conocida con condiciones iniciales relativamente bien definidas, atravesando un potencial gravitacional que puede reconstruirse.</p>
+  <p>Dentro del marco sectorial, estos eventos representan exactamente el tipo de laboratorio extremo que permite pasar de la especulación a la restricción cuantitativa: <em>no demostrar</em> la existencia de masa no visible, sino <em>acotar</em> cuánta se requiere para que la dinámica observada sea físicamente consistente.</p>
+
+  <hr class="divider">
+
+  <div class="section-label">Formalismo de inferencia</div>
+  <p>Sea un agujero negro supermasivo expulsado de una galaxia con velocidad de eyección v<sub>ejec</sub>, masa M<sub>BH</sub>, siguiendo una trayectoria reconstruible (r, θ) durante un tiempo dinámico t<sub>din</sub>. El potencial gravitacional total Φ<sub>total</sub> que el objeto tuvo que vencer se estima integrando las ecuaciones de movimiento sobre esa trayectoria:</p>
+
+  <div class="eq-block">
+    Φ<sub>total</sub>(r) ≈ ½ v<sub>ejec</sub>² + ΔΦ(r, θ, t)
+    <div class="eq-label">donde ΔΦ es la variación de potencial a lo largo de la trayectoria observada</div>
+  </div>
+
+  <p>La masa dinámica total M<sub>dinámica</sub> requerida para sostener ese potencial se obtiene invirtiendo el modelo de potencial adoptado (esférico, NFW, isotérmico singular):</p>
+
+  <div class="eq-block">
+    M<sub>dinámica</sub> = f(Φ<sub>total</sub>, modelo de halo)
+    <div class="eq-label">depende del perfil de densidad asumido — principal fuente de incertidumbre sistemática</div>
+  </div>
+
+  <p>La masa bariónica visible del sistema se compone de:</p>
+
+  <div class="eq-block">
+    M<sub>bariónica</sub> = M<sub>★</sub> + M<sub>gas</sub> + M<sub>BH</sub>
+    <div class="eq-label">estrellas + gas + el agujero negro expulsado (masa conocida)</div>
+  </div>
+
+  <p>La diferencia entre ambas cantidades da una restricción sobre la masa no visible:</p>
+
+  <div class="eq-block" style="border-left-color: #1D9E75;">
+    M<sub>no visible</sub> = M<sub>dinámica</sub> − M<sub>bariónica</sub>
+    <div class="eq-label">si M<sub>no visible</sub> &gt; 0 → la dinámica requiere masa no bariónica adicional</div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-label">Diagrama conceptual del método</div>
+
+  <svg class="diagram" viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img">
+    <title>Diagrama: agujero negro fugitivo como sonda gravitacional</title>
+    <defs>
+      <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#888780"/>
+      </marker>
+    </defs>
+
+    <g class="c-blue">
+      <rect x="8" y="60" width="130" height="72" rx="8"/>
+      <text x="73" y="90" text-anchor="middle" class="th" font-size="13" font-weight="500">Observables</text>
+      <text x="73" y="108" text-anchor="middle" class="ts" font-size="11">v_ejec, M_BH</text>
+      <text x="73" y="122" text-anchor="middle" class="ts" font-size="11">r, θ, t_trayectoria</text>
+    </g>
+
+    <line x1="138" y1="96" x2="188" y2="96" stroke="#888780" stroke-width="1.2" marker-end="url(#arr)"/>
+
+    <g class="c-purple">
+      <rect x="190" y="60" width="140" height="72" rx="8"/>
+      <text x="260" y="86" text-anchor="middle" class="th" font-size="13" font-weight="500">Potencial total</text>
+      <text x="260" y="103" text-anchor="middle" class="ts" font-size="11">Φ_total(r)</text>
+      <text x="260" y="118" text-anchor="middle" class="ts" font-size="11">modelo de halo</text>
+    </g>
+
+    <line x1="330" y1="96" x2="380" y2="96" stroke="#888780" stroke-width="1.2" marker-end="url(#arr)"/>
+
+    <g class="c-gray">
+      <rect x="382" y="40" width="130" height="52" rx="8"/>
+      <text x="447" y="62" text-anchor="middle" class="th" font-size="13" font-weight="500">M_dinámica</text>
+      <text x="447" y="78" text-anchor="middle" class="ts" font-size="11">masa total requerida</text>
+    </g>
+
+    <g class="c-gray">
+      <rect x="382" y="104" width="130" height="52" rx="8"/>
+      <text x="447" y="126" text-anchor="middle" class="th" font-size="13" font-weight="500">M_bariónica</text>
+      <text x="447" y="142" text-anchor="middle" class="ts" font-size="11">M★ + M_gas + M_BH</text>
+    </g>
+
+    <line x1="512" y1="66" x2="540" y2="88" stroke="#888780" stroke-width="1.2" marker-end="url(#arr)"/>
+    <line x1="512" y1="130" x2="540" y2="108" stroke="#888780" stroke-width="1.2" marker-end="url(#arr)"/>
+
+    <g class="c-teal">
+      <rect x="542" y="70" width="90" height="56" rx="8"/>
+      <text x="587" y="94" text-anchor="middle" class="th" font-size="13" font-weight="500">M_no visible</text>
+      <text x="587" y="110" text-anchor="middle" class="ts" font-size="11">= diferencia</text>
+    </g>
+
+    <text x="320" y="200" text-anchor="middle" font-size="11" class="t" opacity="0.55">M_no visible = M_dinámica − M_bariónica</text>
+  </svg>
+
+  <hr class="divider">
+
+  <div class="section-label">Tres pasos de la inferencia</div>
+  <div class="step-grid">
+    <div class="step-card">
+      <div class="step-num">Paso 1</div>
+      <div class="step-title">Reconstruir el potencial</div>
+      <div class="step-body">Con v<sub>ejec</sub>, M<sub>BH</sub> y la trayectoria observada se integran las ecuaciones de movimiento para estimar Φ<sub>total</sub>. Física clásica, sin especulación.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Paso 2</div>
+      <div class="step-title">Comparar con lo visible</div>
+      <div class="step-body">M<sub>bariónica</sub> se estima de la masa estelar, del gas y del propio agujero negro. Si M<sub>dinámica</sub> &gt; M<sub>bariónica</sub>, falta masa en el balance.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Paso 3</div>
+      <div class="step-title">Cuantificar el residuo</div>
+      <div class="step-body">M<sub>no visible</sub> es el exceso. No afirma qué es ese exceso, solo que se requiere para que la trayectoria sea físicamente consistente.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-label">Datos observacionales requeridos</div>
+  <div class="obs-grid">
+    <div class="obs-item"><i class="ti ti-arrows-move" aria-hidden="true"></i>Trayectoria 3D (no solo proyectada) y velocidad radial</div>
+    <div class="obs-item"><i class="ti ti-atom" aria-hidden="true"></i>Masa del agujero negro (M<sub>BH</sub>)</div>
+    <div class="obs-item"><i class="ti ti-stars" aria-hidden="true"></i>Edad y distribución de estrellas en la estela</div>
+    <div class="obs-item"><i class="ti ti-wave-sine" aria-hidden="true"></i>Densidad y geometría del gas intergaláctico</div>
+    <div class="obs-item"><i class="ti ti-galaxy" aria-hidden="true"></i>Masa de la galaxia de origen (M<sub>★</sub>, M<sub>gas</sub>)</div>
+    <div class="obs-item"><i class="ti ti-chart-dots" aria-hidden="true"></i>Contexto del sistema triple (si aplica)</div>
+  </div>
+
+  <div class="caveat">
+    <strong>Nota metodológica:</strong> M<sub>dinámica</sub> no es directamente observable. Se infiere asumiendo un modelo de potencial (esférico, NFW, isotérmico). El modelo adoptado es la principal fuente de incertidumbre sistemática. La inferencia debe reportarse junto al perfil asumido y sus rangos de confianza.
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-label">Conexión con el marco sectorial</div>
+  <p>Esta línea observacional no es parte del núcleo de la hipótesis sectorial, sino una derivación independiente compatible con su filosofía general: ciertos fenómenos extremos no son anomalías aisladas, sino ventanas hacia estructuras físicas más profundas.</p>
+  <p>En términos concretos: el marco sectorial sugiere que eventos gravitacionales de alta energía pueden reorganizar el material bariónico de formas que amplifican las asimetrías preexistentes entre masa visible y no visible. Un agujero negro fugitivo, al atravesar un halo de materia oscura, modula esa asimetría de forma datable y espacialmente localizada — exactamente el tipo de restricción observacional que puede contrastarse con simulaciones N-body o hidrodinámicas.</p>
+  <p>La pregunta empírica central no es "¿esto prueba la materia oscura?" sino: <em>¿cuánta masa total requiere esta trayectoria para ser físicamente consistente, y cuánto excede la masa bariónica observable?</em></p>
+
+  <hr class="divider">
+
+  <div class="section-label">Conexión histórica</div>
+  <p>Este método es análogo en espíritu a las sondas dinámicas anteriores: Zwicky (1933) usó dispersión de velocidades en el Cúmulo de Coma; Vera Rubin (1970s) usó curvas de rotación galáctica. Acá el trazador es distinto — un objeto compacto con masa conocida y evento de eyección datable — pero la lógica inferencial es la misma: si la dinámica observada requiere más masa de la que se ve, algo no visible está ahí.</p>
+
+  <p class="footnote">Apéndice C — Hipótesis de Transición Sectorial Cosmológica v3.1. Bravo Chaves, J. E. (2026). San José, Costa Rica.</p>
+</div>

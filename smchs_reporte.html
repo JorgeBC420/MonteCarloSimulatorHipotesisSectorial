@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMCHS — Análisis de corridas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .header { background: #1e293b; border-bottom: 1px solid #334155; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #f1f5f9; letter-spacing: -0.3px; }
+  .header .sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .badge-gen { background: #1e3a5f; color: #60a5fa; border-radius: 6px; padding: 4px 10px; font-size: 11px; }
+  .main { padding: 24px 32px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .metric { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px 16px; }
+  .metric .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .metric .value { font-size: 22px; font-weight: 600; color: #f1f5f9; }
+  .metric .value.green { color: #34d399; }
+  .metric .value.blue  { color: #60a5fa; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .controls select, .controls input { background: #1e293b; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+  .controls label { font-size: 12px; color: #64748b; }
+  .btn { background: #1e3a5f; color: #60a5fa; border: 1px solid #1e40af; border-radius: 6px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+  .btn:hover { background: #1e40af; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: #1e293b; border-bottom: 1px solid #334155; }
+  th { padding: 10px 6px; text-align: left; font-size: 11px; font-weight: 500; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+  th.r { text-align: right; }
+  tbody tr { border-bottom: 1px solid #1e293b; transition: background 0.1s; }
+  tbody tr:hover { background: #1e293b; }
+  .note { margin-top: 20px; font-size: 11px; color: #475569; border-top: 1px solid #1e293b; padding-top: 14px; }
+  .snr-bar { display: inline-block; height: 3px; border-radius: 2px; vertical-align: middle; margin-left: 6px; }
+  #no-results { display: none; color: #475569; text-align: center; padding: 32px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header h1">SMCHS — Análisis de corridas archivadas</div>
+    <div class="sub">Directorio: /home/claude/SMCHS/logs &nbsp;·&nbsp; Generado: 2026-05-28 03:22 UTC</div>
+  </div>
+  <span class="badge-gen">3 corridas</span>
+</div>
+
+<div class="main">
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">Corridas</div>
+      <div class="value blue">3</div>
+    </div>
+    <div class="metric">
+      <div class="label">SNR mín</div>
+      <div class="value" style="color:#34d399">2.522</div>
+    </div>
+    <div class="metric">
+      <div class="label">SNR máx</div>
+      <div class="value green">3.215</div>
+    </div>
+    <div class="metric">
+      <div class="label">SNR ≥ 2 (robustas)</div>
+      <div class="value green">3 / 3</div>
+    </div>
+    <div class="metric">
+      <div class="label">KS global</div>
+      <div class="value green">p ≥ 0.999</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label>Modo:</label>
+    <select id="filter-mode">
+      <option value="">todos</option>
+      <option value="flat">flat</option>
+      <option value="metric">metric</option>
+      <option value="geometric">geometric</option>
+    </select>
+    <label>Quench:</label>
+    <select id="filter-quench">
+      <option value="">todos</option>
+      <option value="true">ON</option>
+      <option value="false">off</option>
+    </select>
+    <label>Ordenar por:</label>
+    <select id="sort-by">
+      <option value="ts">fecha</option>
+      <option value="snr">SNR</option>
+      <option value="R">ratio R</option>
+      <option value="seed">seed</option>
+    </select>
+    <button class="btn" onclick="exportarCSV()">⬇ CSV</button>
+    <button class="btn" onclick="resetFiltros()">↺ Reset</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Seed</th>
+          <th>Modo</th>
+          <th class="r">N</th>
+          <th class="r">R</th>
+          <th class="r">Exceso</th>
+          <th class="r">SNR_tail</th>
+          <th class="r">ΔQ99</th>
+          <th class="r">Masivas B/S</th>
+          <th class="r">Tiempo</th>
+          <th>Ver.</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-28 02:28:54 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#e0f2fe;color:#0369a1;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat</span></td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">120,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.075×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#16a34a">+7.5%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#1a9e5c">3.215 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.190 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">10 / 11</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.5s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">0.5.7</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-28 02:29:04 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#e0f2fe;color:#0369a1;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">flat+quench</span></td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">120,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.096×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#16a34a">+9.6%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#2563eb">2.899 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.034 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">10 / 11</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.0s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">0.5.7</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 6px;font-size:12px;color:#64748b">2026-05-28 02:29:14 UTC</td>
+          <td style="padding:8px 6px;font-weight:500;font-size:13px">42</td>
+          <td style="padding:8px 6px"><span style="background:#fef9c3;color:#92400e;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">metric+quench</span></td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">120,000</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">1.198×</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px;color:#16a34a">+19.8%</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:#2563eb">2.522 ★</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">0.897 Gyr</td>
+          <td style="padding:8px 6px;text-align:right;font-size:13px">10 / 12</td>
+          <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">6.2s</td>
+          <td style="padding:8px 6px;font-size:11px;color:#94a3b8">0.5.7</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="no-results">No hay corridas que coincidan con los filtros.</div>
+  </div>
+
+  <div class="note">
+    SNR_tail ★ = ≥ 2.0 (robusto) &nbsp;·&nbsp;
+    R = ratio P(anomalía) sectorial / base &nbsp;·&nbsp;
+    ΔQ99 = diferencia de percentil 99 de dt_signal (Gyr) &nbsp;·&nbsp;
+    KS p ≥ 0.05 = distribución global no deformada &nbsp;·&nbsp;
+    Masivas B/S = N masivas z&gt;12.0 base / sectorial
+  </div>
+</div>
+
+<script>
+const DATOS = [{"ts": "2026-05-28 02:28:54 UTC", "seed": "42", "mode": "flat", "quench": false, "n": 120000, "R": 1.075, "exceso": 7.5, "snr": 3.215, "dq99": 1.1902, "elapsed": 6.5, "ver": "0.5.7", "zip": "smchs_run_20260528T022853Z.zip"}, {"ts": "2026-05-28 02:29:04 UTC", "seed": "42", "mode": "flat", "quench": true, "n": 120000, "R": 1.096, "exceso": 9.6, "snr": 2.899, "dq99": 1.0335, "elapsed": 6.0, "ver": "0.5.7", "zip": "smchs_run_20260528T022903Z.zip"}, {"ts": "2026-05-28 02:29:14 UTC", "seed": "42", "mode": "metric", "quench": true, "n": 120000, "R": 1.198, "exceso": 19.8, "snr": 2.522, "dq99": 0.8968, "elapsed": 6.2, "ver": "0.5.7", "zip": "smchs_run_20260528T022914Z.zip"}];
+
+function renderTabla(datos) {
+  const tbody = document.getElementById('tbody');
+  const noRes = document.getElementById('no-results');
+  if (!datos.length) {
+    tbody.innerHTML = '';
+    noRes.style.display = 'block';
+    return;
+  }
+  noRes.style.display = 'none';
+
+  function snrColor(v) {
+    if (!v) return '#888';
+    if (v >= 3.0) return '#34d399';
+    if (v >= 2.0) return '#60a5fa';
+    if (v >= 1.0) return '#f59e0b';
+    return '#f87171';
+  }
+
+  function modeBadge(mode, quench) {
+    const q = quench ? '+quench' : '';
+    const colors = {
+      flat: ['#0c2a3f','#60a5fa'],
+      metric: ['#3b2800','#fbbf24'],
+      geometric: ['#2e1065','#c084fc'],
+    };
+    const [bg, fg] = colors[mode] || ['#1e293b','#94a3b8'];
+    return `<span style="background:${bg};color:${fg};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500">${mode}${q}</span>`;
+  }
+
+  function fmt(v, d=3, s='') {
+    return v != null ? Number(v).toFixed(d) + s : '—';
+  }
+
+  tbody.innerHTML = datos.map(c => `
+    <tr>
+      <td style="padding:8px 6px;font-size:12px;color:#64748b">${c.ts}</td>
+      <td style="padding:8px 6px;font-weight:500;font-size:13px">${c.seed || '—'}</td>
+      <td style="padding:8px 6px">${modeBadge(c.mode, c.quench)}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px">${c.n != null ? c.n.toLocaleString() : '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px">${fmt(c.R, 3)}×</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px;color:#34d399">${c.exceso != null ? (c.exceso > 0 ? '+' : '') + c.exceso.toFixed(1) + '%' : '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:500;font-size:13px;color:${snrColor(c.snr)}">${c.snr != null ? c.snr.toFixed(3) + (c.snr >= 2 ? ' ★' : '') : '—'}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:13px">${fmt(c.dq99, 3)} Gyr</td>
+      <td style="padding:8px 6px;text-align:right;font-size:11px;color:#94a3b8">${c.zip}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:12px;color:#64748b">${c.elapsed != null ? c.elapsed + 's' : '—'}</td>
+      <td style="padding:8px 6px;font-size:11px;color:#475569">${c.ver}</td>
+    </tr>`).join('');
+}
+
+function filtrarYOrdenar() {
+  const mode   = document.getElementById('filter-mode').value;
+  const quench = document.getElementById('filter-quench').value;
+  const sortBy = document.getElementById('sort-by').value;
+
+  let datos = [...DATOS];
+  if (mode)   datos = datos.filter(c => c.mode === mode);
+  if (quench !== '') datos = datos.filter(c => String(c.quench) === quench);
+
+  datos.sort((a, b) => {
+    if (sortBy === 'snr')  return (b.snr  || 0) - (a.snr  || 0);
+    if (sortBy === 'R')    return (b.R    || 0) - (a.R    || 0);
+    if (sortBy === 'seed') return (a.seed || '') < (b.seed || '') ? -1 : 1;
+    return a.ts < b.ts ? -1 : 1;
+  });
+  renderTabla(datos);
+}
+
+document.getElementById('filter-mode').addEventListener('change', filtrarYOrdenar);
+document.getElementById('filter-quench').addEventListener('change', filtrarYOrdenar);
+document.getElementById('sort-by').addEventListener('change', filtrarYOrdenar);
+
+function resetFiltros() {
+  document.getElementById('filter-mode').value = '';
+  document.getElementById('filter-quench').value = '';
+  document.getElementById('sort-by').value = 'ts';
+  filtrarYOrdenar();
+}
+
+function exportarCSV() {
+  const campos = ['ts','seed','mode','quench','n','R','exceso','snr','dq99','elapsed','ver','zip'];
+  const encabezado = 'timestamp,seed,modo,quench_uv,N,R,exceso_pct,SNR_tail,delta_Q99_Gyr,elapsed_s,version,zip_name';
+  const filas = DATOS.map(c => campos.map(k => {
+    const v = c[k];
+    if (v == null) return '';
+    const s = String(v);
+    return s.includes(',') ? `"${s}"` : s;
+  }).join(','));
+  const blob = new Blob([encabezado + '\n' + filas.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'smchs_corridas_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
